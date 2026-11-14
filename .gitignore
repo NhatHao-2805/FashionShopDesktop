@@ -1,0 +1,40 @@
+# Maven / Java
+**/target/
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# IDE / local settings
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+
+# Local backups and temporary uploads
+_backup/
+**/uploads/temp/
+**/uploads/tmp/
+server/uploads/products/test.txt
+
+# Credentials and local environment files
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor backups
+*.bak
+*.bak_*
+*~
+
+# Machine-specific server credentials
+server/src/main/resources/application.properties
