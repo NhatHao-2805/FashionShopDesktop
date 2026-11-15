@@ -163,3 +163,49 @@ mvn compile
 
 Dự án gồm các module Maven riêng; chạy lệnh trong từng thư mục có `pom.xml`.
 
+
+## Cập nhật chọn size/màu
+
+- Khách chọn size/màu trên cửa sổ chi tiết trước khi thêm vào giỏ.
+- Giỏ và đơn hàng tách theo sản phẩm + size + màu; server kiểm tra lựa chọn thuộc cấu hình sản phẩm.
+- Database cũ: sao lưu rồi chạy `database/migrate_size_color.sql` một lần trước khi khởi động bản mới. Database mới đã có hai cột này trong script tạo bảng.
+- Tồn kho hiện vẫn là tổng theo sản phẩm, chưa phân bổ số lượng riêng cho từng size/màu. Không tự chia tồn kho cũ vì không có dữ liệu phân bổ thực tế.
+
+## Quyền tài khoản ở API được bảo vệ
+
+Mỗi yêu cầu tới `/api/protected/*` và `/api/admin/*` được kiểm tra JWT, sau đó đọc lại tài khoản từ database. Tài khoản bị khóa/xóa hoặc có vai trò không hợp lệ nhận HTTP 401; API quản trị từ chối vai trò hiện tại không phải ADMIN bằng HTTP 403. Khi database không truy cập được, trả HTTP 503, không dùng quyền cũ trong token.
+
+Thay đổi này không chủ động đóng các kết nối WebSocket đã mở trước khi khóa tài khoản.
+
+## Xác nhận giá, tồn kho và thông tin giao hàng
+
+- Khi đặt hàng, client tải danh sách sản phẩm mới nhất trên luồng nền. Nếu giá hoặc tồn kho đổi, hiển thị thông tin và tổng tiền mới để khách xác nhận; hủy xác nhận thì không tạo đơn.
+- Nếu sản phẩm ngừng bán, lựa chọn size/màu không còn hợp lệ hoặc tổng số lượng cùng sản phẩm vượt tồn kho, yêu cầu sửa giỏ hàng trước.
+- Client gửi `expectedPrice` cho từng dòng đơn. Server so sánh với giá trong database dưới khóa `FOR UPDATE`, rồi mới tạo đơn/trừ kho. Nếu giá đổi sau bước xác nhận, transaction bị hủy và khách phải kiểm tra lại.
+- Cập nhật server và client cùng phiên bản: client cũ không gửi `expectedPrice` sẽ bị yêu cầu tải lại giỏ hàng.
+- Tên người nhận: 2–100 ký tự; địa chỉ: 10–500 ký tự; ghi chú: tối đa 1000 ký tự.
+- Số điện thoại hỗ trợ số di động Việt Nam 10 chữ số với đầu 03/05/07/08/09. Dạng `+84` được chuẩn hóa về `0`; khoảng trắng, dấu chấm, gạch ngang và ngoặc được bỏ qua. Đây là kiểm tra định dạng, chưa xác minh số điện thoại thực tế bằng OTP.
+
+## Chạy kiểm thử tự động
+
+PowerShell, từ thư mục gốc dự án, cần JDK 21:
+
+```powershell
+mvn -f server/pom.xml test
+mvn -f client-customer/pom.xml test
+```
+
+JUnit kiểm tra quyền tài khoản, chuẩn hóa và giới hạn thông tin giao hàng, gộp size/màu, cập nhật giá/tồn kho và xóa giỏ khi đổi tài khoản. Test MySQL mặc định được bỏ qua nếu chưa cấu hình URL thử nghiệm.
+
+Để chạy cả kiểm thử giao dịch MySQL (bật MySQL trước):
+
+```powershell
+$env:FASHION_TEST_DB_URL = "jdbc:mysql://127.0.0.1:3306/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true"
+$env:FASHION_TEST_DB_USER = "root"
+# Nếu MySQL có mật khẩu, đặt FASHION_TEST_DB_PASSWORD trong môi trường cục bộ.
+mvn -f server/pom.xml test
+Remove-Item Env:FASHION_TEST_DB_URL
+Remove-Item Env:FASHION_TEST_DB_USER
+```
+
+Test tạo database riêng `fashion_test_<UUID>` từ schema trong mã nguồn và xóa database đó sau khi hoàn tất; cần tài khoản được phép tạo/xóa database thử nghiệm. Không chạy kiểm thử giao dịch trên bảng cửa hàng. Các tình huống gồm mua đồng thời, hủy đơn không hoàn kho lặp, quyền sở hữu đơn, giá cũ, size không hợp lệ và rollback toàn bộ khi nhiều size cùng vượt tồn kho tổng.

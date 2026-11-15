@@ -202,56 +202,70 @@ public class CheckoutWindow {
                 return;
             }
 
-            orderButton.setDisable(true);
-
             try {
-
-                OrderService.OrderResult result =
-                        orderService.createOrder(
-                                receiverName,
-                                phone,
-                                address,
-                                note,
-                                cartService.getItems()
-                        );
-
-                cartService.clear();
-
-                Alert success =
-                        new Alert(
-                                Alert.AlertType.INFORMATION
-                        );
-
-                success.setTitle(
-                        "Đặt hàng thành công"
-                );
-
-                success.setHeaderText(
-                        "Đơn hàng #"
-                                + result.getId()
-                );
-
-                success.setContentText(
-                        "Trạng thái: "
-                                + result.getStatus()
-                                + "\nTổng tiền: "
-                                + currency.format(
-                                result.getTotalAmount()
-                        )
-                );
-
-                success.showAndWait();
-
-                stage.close();
-
-            } catch (Exception e) {
-
-                messageLabel.setText(
-                        e.getMessage()
-                );
-
-                orderButton.setDisable(false);
+                com.fashionshop.customer.service.ShippingValidation.validate(receiverName, phone, address, note);
+            } catch (IllegalArgumentException e) {
+                messageLabel.setText(e.getMessage());
+                return;
             }
+            orderButton.setDisable(true);
+            messageLabel.setText("Đang kiểm tra giá và tồn kho mới nhất...");
+            var snapshot = cartService.getItems().stream().map(item ->
+                    new com.fashionshop.customer.model.CartItem(item.getProduct(), item.getQuantity(),
+                            item.getSelectedSize(), item.getSelectedColor())).toList();
+            javafx.concurrent.Task<com.fashionshop.customer.service.CheckoutReview.Result> reviewTask = new javafx.concurrent.Task<>() {
+                @Override protected com.fashionshop.customer.service.CheckoutReview.Result call() {
+                    return com.fashionshop.customer.service.CheckoutReview.review(snapshot,
+                            new com.fashionshop.customer.service.ProductService().getAllProducts());
+                }
+            };
+            reviewTask.setOnFailed(e -> {
+                messageLabel.setText(reviewTask.getException().getMessage());
+                orderButton.setDisable(false);
+            });
+            reviewTask.setOnSucceeded(e -> {
+                if (!stage.isShowing() || !sameCustomer(user.getId())) {
+                    messageLabel.setText("Phiên đăng nhập đã thay đổi. Vui lòng mở lại giỏ hàng.");
+                    return;
+                }
+                var review = reviewTask.getValue();
+                totalLabel.setText("Tổng thanh toán: " + currency.format(review.total()));
+                if (!review.changes().isEmpty()) {
+                    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                    confirm.initOwner(stage);
+                    confirm.setHeaderText("Giá hoặc tồn kho đã thay đổi");
+                    confirm.setContentText(String.join("\n", review.changes())
+                            + "\nTổng mới: " + currency.format(review.total()) + "\nBạn đồng ý đặt hàng theo thông tin mới?");
+                    if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                        messageLabel.setText("Chưa đặt hàng. Bạn có thể kiểm tra lại giỏ hàng.");
+                        orderButton.setDisable(false);
+                        return;
+                    }
+                }
+                if (!sameCustomer(user.getId()) || !stage.isShowing()) return;
+                cartService.getItems().setAll(review.items());
+                messageLabel.setText("Đang tạo đơn hàng...");
+                javafx.concurrent.Task<OrderService.OrderResult> submit = new javafx.concurrent.Task<>() {
+                    @Override protected OrderService.OrderResult call() throws Exception {
+                        return orderService.createOrder(receiverName, phone, address, note, review.items());
+                    }
+                };
+                submit.setOnFailed(error -> {
+                    messageLabel.setText(submit.getException().getMessage());
+                    orderButton.setDisable(false);
+                });
+                submit.setOnSucceeded(done -> {
+                    if (sameCustomer(user.getId())) cartService.clear();
+                    var result = submit.getValue();
+                    Alert success = new Alert(Alert.AlertType.INFORMATION);
+                    success.setHeaderText("Đã tạo đơn #" + result.getId());
+                    success.setContentText("Tổng tiền: " + currency.format(result.getTotalAmount()));
+                    success.showAndWait();
+                    stage.close();
+                });
+                startTask(submit);
+            });
+            startTask(reviewTask);
         });
 
         Button cancelButton =
@@ -305,4 +319,13 @@ public class CheckoutWindow {
 
         stage.showAndWait();
     }
+    private boolean sameCustomer(long id) {
+        return sessionManager.isCustomer() && sessionManager.getCurrentUser().getId() == id;
+    }
+    private void startTask(javafx.concurrent.Task<?> task) {
+        Thread worker = new Thread(task, "checkout-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
 }

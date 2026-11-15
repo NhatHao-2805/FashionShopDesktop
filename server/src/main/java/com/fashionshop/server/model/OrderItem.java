@@ -4,6 +4,13 @@ import java.math.BigDecimal;
 
 public class OrderItem {
 
+
+    private String selectedSize;
+    private String selectedColor;
+    public String getSelectedSize() { return selectedSize; }
+    public String getSelectedColor() { return selectedColor; }
+    public void setSelectedSize(String value) { selectedSize = value; }
+    public void setSelectedColor(String value) { selectedColor = value; }
     private long productId;
 
     private String productName;
@@ -11,6 +18,9 @@ public class OrderItem {
     private int quantity;
 
     private BigDecimal price;
+    private BigDecimal expectedPrice;
+    public BigDecimal getExpectedPrice() { return expectedPrice; }
+    public void setExpectedPrice(BigDecimal value) { expectedPrice = value; }
 
     public OrderItem() {
     }

@@ -156,6 +156,8 @@ CREATE TABLE order_items (
     order_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
     quantity INT NOT NULL,
+    selected_size VARCHAR(100),
+    selected_color VARCHAR(100),
     price DECIMAL(15,2) NOT NULL,
 
     PRIMARY KEY (id),

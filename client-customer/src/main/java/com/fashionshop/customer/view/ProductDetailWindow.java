@@ -96,6 +96,17 @@ public class ProductDetailWindow {
                         "Màu: " + product.getColor()
                 );
 
+        javafx.scene.control.ComboBox<String> sizeChoice = new javafx.scene.control.ComboBox<>();
+        javafx.scene.control.ComboBox<String> colorChoice = new javafx.scene.control.ComboBox<>();
+        for (String value : (product.getSize() == null ? "" : product.getSize()).split(","))
+            if (!value.isBlank()) sizeChoice.getItems().add(value.trim());
+        for (String value : (product.getColor() == null ? "" : product.getColor()).split(","))
+            if (!value.isBlank()) colorChoice.getItems().add(value.trim());
+        sizeChoice.setPromptText("Chọn size");
+        colorChoice.setPromptText("Chọn màu");
+        if (sizeChoice.getItems().size() == 1) sizeChoice.getSelectionModel().selectFirst();
+        if (colorChoice.getItems().size() == 1) colorChoice.getSelectionModel().selectFirst();
+
         Label stockLabel =
                 new Label(
                         "Còn lại: " + product.getStock()
@@ -144,7 +155,11 @@ public class ProductDetailWindow {
                     quantitySpinner.getValue();
 
             try {
-                CartService.getInstance().addProduct(product, quantity);
+                if ((!sizeChoice.getItems().isEmpty() && sizeChoice.getValue() == null)
+                        || (!colorChoice.getItems().isEmpty() && colorChoice.getValue() == null)) {
+                    throw new IllegalArgumentException("Vui lòng chọn size và màu.");
+                }
+                CartService.getInstance().addProduct(product, quantity, sizeChoice.getValue(), colorChoice.getValue());
             } catch (IllegalArgumentException | IllegalStateException e) {
                 Alert error = new Alert(Alert.AlertType.WARNING);
                 error.setHeaderText(null);
@@ -192,8 +207,8 @@ public class ProductDetailWindow {
                         priceLabel,
                         descriptionLabel,
                         categoryLabel,
-                        sizeLabel,
-                        colorLabel,
+                        sizeLabel, sizeChoice,
+                        colorLabel, colorChoice,
                         stockLabel,
                         quantityBox,
                         buttonBox

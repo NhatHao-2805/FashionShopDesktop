@@ -10,6 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OrderRepository {
+    @FunctionalInterface
+    public interface ConnectionProvider { Connection open() throws SQLException; }
+    private final ConnectionProvider connections;
+    public OrderRepository() { this(DatabaseConnection::getConnection); }
+    public OrderRepository(ConnectionProvider connections) {
+        this.connections = java.util.Objects.requireNonNull(connections);
+    }
 
     public Order create(Order order) {
 
@@ -18,7 +25,7 @@ public class OrderRepository {
         try {
 
             connection =
-                    DatabaseConnection.getConnection();
+                    connections.open();
 
             connection.setAutoCommit(false);
 
@@ -30,7 +37,7 @@ public class OrderRepository {
                         id,
                         name,
                         price,
-                        stock,
+                        stock, size, color,
                         status
                     FROM products
                     WHERE id = ?
@@ -81,6 +88,8 @@ public class OrderRepository {
                             );
                         }
 
+                        validateChoice(resultSet.getString("size"), item.getSelectedSize(), "size");
+                        validateChoice(resultSet.getString("color"), item.getSelectedColor(), "màu");
                         int stock =
                                 resultSet.getInt(
                                         "stock"
@@ -109,6 +118,8 @@ public class OrderRepository {
                                         "price"
                                 );
 
+                        if (item.getExpectedPrice() == null || price.compareTo(item.getExpectedPrice()) != 0)
+                            throw new IllegalArgumentException("Giá sản phẩm đã thay đổi. Vui lòng kiểm tra lại giỏ hàng và xác nhận giá mới.");
                         item.setPrice(price);
 
                         item.setProductName(
@@ -222,9 +233,9 @@ public class OrderRepository {
                         order_id,
                         product_id,
                         quantity,
-                        price
+                        price, selected_size, selected_color
                     )
-                    VALUES (?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """;
 
             try (
@@ -257,6 +268,8 @@ public class OrderRepository {
                             item.getPrice()
                     );
 
+                    statement.setString(5, item.getSelectedSize());
+                    statement.setString(6, item.getSelectedColor());
                     statement.addBatch();
                 }
 
@@ -382,7 +395,7 @@ public class OrderRepository {
 
         try (
                 Connection connection =
-                        DatabaseConnection.getConnection();
+                        connections.open();
 
                 PreparedStatement statement =
                         connection.prepareStatement(sql)
@@ -441,7 +454,7 @@ public class OrderRepository {
 
         try (
                 Connection connection =
-                        DatabaseConnection.getConnection();
+                        connections.open();
 
                 PreparedStatement statement =
                         connection.prepareStatement(
@@ -478,6 +491,7 @@ public class OrderRepository {
                     SELECT
                         oi.product_id,
                         p.name AS product_name,
+                        oi.selected_size, oi.selected_color,
                         oi.quantity,
                         oi.price
                     FROM order_items oi
@@ -518,6 +532,8 @@ public class OrderRepository {
                                 )
                         );
 
+                        item.setSelectedSize(resultSet.getString("selected_size"));
+                        item.setSelectedColor(resultSet.getString("selected_color"));
                         item.setProductName(
                                 resultSet.getString(
                                         "product_name"
@@ -564,7 +580,7 @@ public class OrderRepository {
         try {
 
             connection =
-                    DatabaseConnection.getConnection();
+                    connections.open();
 
             connection.setAutoCommit(false);
 
@@ -808,6 +824,13 @@ public class OrderRepository {
 
             closeQuietly(connection);
         }
+    }
+
+    private void validateChoice(String options, String selected, String label) {
+        List<String> allowed = options == null ? List.of() : java.util.Arrays.stream(options.split(","))
+                .map(String::trim).filter(value -> !value.isEmpty()).toList();
+        if (allowed.isEmpty() ? selected != null && !selected.isBlank() : !allowed.contains(selected))
+            throw new IllegalArgumentException("Lựa chọn " + label + " không hợp lệ.");
     }
 
     private Order mapOrder(

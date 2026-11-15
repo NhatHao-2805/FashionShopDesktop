@@ -30,6 +30,10 @@ public class CartService {
             int quantity
     ) {
 
+        addProduct(product, quantity, null, null);
+    }
+
+    public void addProduct(Product product, int quantity, String size, String color) {
         SessionManager.getInstance().requireCustomer();
         if (product == null || quantity <= 0) {
             throw new IllegalArgumentException("Sản phẩm và số lượng không hợp lệ.");
@@ -44,7 +48,9 @@ public class CartService {
         for (CartItem item : items) {
 
             if (item.getProduct().getId()
-                    == product.getId()) {
+                    == product.getId()
+                    && java.util.Objects.equals(item.getSelectedSize(), size)
+                    && java.util.Objects.equals(item.getSelectedColor(), color)) {
 
                 item.setQuantity(
                         item.getQuantity() + quantity
@@ -56,7 +62,7 @@ public class CartService {
         }
 
         items.add(
-                new CartItem(product, quantity)
+                new CartItem(product, quantity, size, color)
         );
 
         refreshItems();

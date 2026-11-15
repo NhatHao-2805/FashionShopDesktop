@@ -203,7 +203,7 @@ checkoutButton.setOnAction(event ->
 
                 Label nameLabel =
                         new Label(
-                                item.getProduct().getName()
+                                item.getProduct().getName() + " | " + java.util.Objects.toString(item.getSelectedSize(), "—") + " / " + java.util.Objects.toString(item.getSelectedColor(), "—")
                         );
 
                 nameLabel.setStyle(

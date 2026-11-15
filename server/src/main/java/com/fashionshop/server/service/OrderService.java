@@ -13,10 +13,9 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
 
-    public OrderService() {
-
-        this.orderRepository =
-                new OrderRepository();
+    public OrderService() { this(new OrderRepository()); }
+    public OrderService(OrderRepository repository) {
+        orderRepository = java.util.Objects.requireNonNull(repository);
     }
 
     public Order createOrder(
@@ -28,6 +27,9 @@ public class OrderService {
             String paymentMethod,
             List<OrderItem> items
     ) {
+
+        ShippingValidation.validate(receiverName, phone, address, note);
+        phone = ShippingValidation.normalizePhone(phone);
 
         if (userId <= 0) {
 
@@ -188,61 +190,27 @@ public class OrderService {
             List<OrderItem> items
     ) {
 
-        Map<Long, Integer> quantities =
-                new LinkedHashMap<>();
-
+        record Key(long productId, String size, String color) { }
+        Map<Key, OrderItem> merged = new LinkedHashMap<>();
         for (OrderItem item : items) {
-
-            if (item == null) {
-
-                throw new IllegalArgumentException(
-                        "Sản phẩm trong đơn hàng không hợp lệ."
-                );
+            if (item == null || item.getProductId() <= 0 || item.getQuantity() <= 0)
+                throw new IllegalArgumentException("Sản phẩm hoặc số lượng không hợp lệ.");
+            item.setSelectedSize(item.getSelectedSize() == null ? null : item.getSelectedSize().trim());
+            item.setSelectedColor(item.getSelectedColor() == null ? null : item.getSelectedColor().trim());
+            if (item.getExpectedPrice() == null || item.getExpectedPrice().signum() < 0
+                    || item.getExpectedPrice().scale() > 2)
+                throw new IllegalArgumentException("Vui lòng tải lại giỏ hàng để xác nhận giá hiện tại.");
+            Key key = new Key(item.getProductId(), item.getSelectedSize(), item.getSelectedColor());
+            OrderItem previous = merged.get(key);
+            if (previous == null) merged.put(key, item);
+            else {
+                if (previous.getExpectedPrice().compareTo(item.getExpectedPrice()) != 0)
+                    throw new IllegalArgumentException("Giá sản phẩm không nhất quán. Vui lòng tải lại giỏ hàng.");
+                try { previous.setQuantity(Math.addExact(previous.getQuantity(), item.getQuantity())); }
+                catch (ArithmeticException e) { throw new IllegalArgumentException("Số lượng quá lớn."); }
             }
-
-            if (item.getProductId() <= 0) {
-
-                throw new IllegalArgumentException(
-                        "Product ID không hợp lệ."
-                );
-            }
-
-            if (item.getQuantity() <= 0) {
-
-                throw new IllegalArgumentException(
-                        "Số lượng sản phẩm phải lớn hơn 0."
-                );
-            }
-
-            quantities.merge(
-                    item.getProductId(),
-                    item.getQuantity(),
-                    Integer::sum
-            );
         }
-
-        List<OrderItem> result =
-                new ArrayList<>();
-
-        for (
-                Map.Entry<Long, Integer> entry :
-                quantities.entrySet()
-        ) {
-
-            OrderItem item =
-                    new OrderItem();
-
-            item.setProductId(
-                    entry.getKey()
-            );
-
-            item.setQuantity(
-                    entry.getValue()
-            );
-
-            result.add(item);
-        }
-
+        List<OrderItem> result = new ArrayList<>(merged.values());
         return result;
     }
 

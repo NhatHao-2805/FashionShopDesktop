@@ -78,6 +78,9 @@ public class OrderService {
             item.quantity =
                     cartItem.getQuantity();
 
+            item.expectedPrice = BigDecimal.valueOf(cartItem.getProduct().getPrice());
+            item.selectedSize = cartItem.getSelectedSize();
+            item.selectedColor = cartItem.getSelectedColor();
             request.items.add(
                     item
             );
@@ -247,7 +250,10 @@ public class OrderService {
     }
 
     private static class ItemRequest {
+        BigDecimal expectedPrice;
 
+        String selectedSize;
+        String selectedColor;
         long productId;
         int quantity;
     }
@@ -331,6 +337,14 @@ public class OrderService {
 
     public static class OrderItemResult {
 
+    private String selectedSize;
+    private String selectedColor;
+    public String getSelectedSize() { return selectedSize; }
+    public String getSelectedColor() { return selectedColor; }
+    public void setSelectedSize(String value) { selectedSize = value; }
+    public void setSelectedColor(String value) { selectedColor = value; }
+
+
         private long productId;
 
         private String productName;
@@ -344,7 +358,7 @@ public class OrderService {
         }
 
         public String getProductName() {
-            return productName;
+            return productName + " | " + java.util.Objects.toString(selectedSize, "—") + " / " + java.util.Objects.toString(selectedColor, "—");
         }
 
         public int getQuantity() {
