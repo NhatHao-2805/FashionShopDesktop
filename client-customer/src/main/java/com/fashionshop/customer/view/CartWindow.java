@@ -39,6 +39,7 @@ public class CartWindow {
             );
 
     public static void show() {
+        if (!PurchaseAccess.requireCustomer()) return;
         new CartWindow().open();
     }
 
@@ -70,14 +71,14 @@ public class CartWindow {
         totalPriceLabel.setStyle(
                 "-fx-font-size: 18px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #d32f2f;"
+                        + "-fx-text-fill: #bd4c30;"
         );
 
 Button checkoutButton =
         new Button("Đặt hàng");
 
 checkoutButton.setStyle(
-        "-fx-background-color: #d32f2f;"
+        "-fx-background-color: #bd4c30;"
                 + "-fx-text-fill: white;"
                 + "-fx-font-weight: bold;"
 );
@@ -159,12 +160,21 @@ checkoutButton.setOnAction(event ->
                 );
 
         stage.setTitle("Giỏ hàng");
+        scene.getStylesheets().add(CartWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
         stage.setScene(scene);
 
-        cartService.getItems().addListener(
-                (ListChangeListener<CartItem>) change ->
-                        refresh()
-        );
+        long customerId = com.fashionshop.customer.service.SessionManager.getInstance().getCurrentUser().getId();
+        ListChangeListener<CartItem> listener = change -> {
+            Runnable update = () -> {
+                var session = com.fashionshop.customer.service.SessionManager.getInstance();
+                if (!session.isCustomer() || session.getCurrentUser().getId() != customerId) stage.close();
+                else refresh();
+            };
+            if (javafx.application.Platform.isFxApplicationThread()) update.run();
+            else javafx.application.Platform.runLater(update);
+        };
+        cartService.getItems().addListener(listener);
+        stage.setOnHidden(event -> cartService.getItems().removeListener(listener));
 
         refresh();
 

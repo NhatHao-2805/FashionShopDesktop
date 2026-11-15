@@ -32,6 +32,17 @@ public class OrderService {
             List<CartItem> cartItems
     ) throws Exception {
 
+        SessionManager.getInstance().requireCustomer();
+        if (cartItems == null || cartItems.isEmpty()) {
+            throw new IllegalArgumentException("Giỏ hàng đang trống.");
+        }
+        for (CartItem item : cartItems) {
+            if (item == null || item.getProduct() == null || item.getQuantity() <= 0
+                    || item.getQuantity() > item.getProduct().getStock()) {
+                throw new IllegalArgumentException("Số lượng sản phẩm không hợp lệ. Vui lòng kiểm tra giỏ hàng.");
+            }
+        }
+
         CreateOrderRequest request =
                 new CreateOrderRequest();
 

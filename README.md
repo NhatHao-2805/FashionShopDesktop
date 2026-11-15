@@ -77,7 +77,7 @@ server.websocket.port=8081
 
 Cấu hình hiện tại dành cho môi trường phát triển cục bộ. Điền mật khẩu database nếu MySQL có mật khẩu.
 
-**Đường dẫn ảnh:** trong `server/src/main/java/com/fashionshop/server/ServerApplication.java`, `staticFiles.externalLocation(...)` hiện trỏ tới `D:/xampp/htdocs/GitHub/FashionShopDesktop/server/uploads`. Nếu clone ở nơi khác, phải sửa đường dẫn này tới thư mục `server/uploads` trên máy bạn. Chạy server từ thư mục `server` để thao tác upload ảnh dùng đúng thư mục tương đối `uploads/products`.
+**Đường dẫn ảnh:** server phục vụ ảnh từ thư mục tương đối `uploads` của thư mục chạy. Hãy chạy Maven từ thư mục `server` để việc xem và upload ảnh cùng dùng `server/uploads/products`.
 
 ## Chạy ứng dụng
 

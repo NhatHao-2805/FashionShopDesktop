@@ -146,6 +146,8 @@ public class OrderDetailWindow {
                         + orderId
         );
 
+        scene.getStylesheets().add(OrderDetailWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
+
         stage.setScene(scene);
         stage.show();
 
@@ -368,7 +370,7 @@ public class OrderDetailWindow {
                     );
 
             cancelButton.setStyle(
-                    "-fx-background-color: #d32f2f;"
+                    "-fx-background-color: #bd4c30;"
                             + "-fx-text-fill: white;"
                             + "-fx-font-weight: bold;"
             );

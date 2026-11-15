@@ -23,17 +23,29 @@ public class SessionManager {
     ) {
         this.token = token;
         this.currentUser = user;
+        CartService.getInstance().clear();
     }
 
     public void logout() {
         this.token = null;
         this.currentUser = null;
+        CartService.getInstance().clear();
     }
 
     public boolean isLoggedIn() {
         return token != null
                 && !token.isBlank()
                 && currentUser != null;
+    }
+
+    public boolean isCustomer() {
+        return isLoggedIn() && "CUSTOMER".equalsIgnoreCase(currentUser.getRole());
+    }
+
+    public void requireCustomer() {
+        if (!isCustomer()) {
+            throw new IllegalStateException("Bạn cần đăng nhập tài khoản khách hàng để mua sắm.");
+        }
     }
 
     public String getToken() {

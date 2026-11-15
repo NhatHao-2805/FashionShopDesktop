@@ -6,7 +6,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
-import java.util.Collections;
 import java.util.List;
 
 public class ProductService {
@@ -45,10 +44,10 @@ public class ProductService {
 
         } catch (Exception e) {
 
-            e.printStackTrace();
+            throw new IllegalStateException("Không thể tải sản phẩm từ server. Hãy kiểm tra server và MySQL.", e);
         }
 
-        return Collections.emptyList();
+        throw new IllegalStateException("Server không trả về danh sách sản phẩm hợp lệ.");
     }
 
     private static class ApiResponse<T> {

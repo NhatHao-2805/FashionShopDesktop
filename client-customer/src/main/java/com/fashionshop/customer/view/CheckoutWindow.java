@@ -27,7 +27,7 @@ public class CheckoutWindow {
             new OrderService();
 
     public static void show() {
-
+        if (!PurchaseAccess.requireCustomer()) return;
         new CheckoutWindow().open();
     }
 
@@ -53,7 +53,7 @@ public class CheckoutWindow {
         User user =
                 sessionManager.getCurrentUser();
 
-        if (user == null) {
+        if (!sessionManager.isCustomer()) {
 
             Alert alert =
                     new Alert(
@@ -150,7 +150,7 @@ public class CheckoutWindow {
         totalLabel.setStyle(
                 "-fx-font-size: 18px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #d32f2f;"
+                        + "-fx-text-fill: #bd4c30;"
         );
 
         Label messageLabel =
@@ -166,13 +166,18 @@ public class CheckoutWindow {
         );
 
         orderButton.setStyle(
-                "-fx-background-color: #d32f2f;"
+                "-fx-background-color: #bd4c30;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 6;"
         );
 
         orderButton.setOnAction(event -> {
+            if (!sessionManager.isCustomer() || sessionManager.getCurrentUser().getId() != user.getId()) {
+                messageLabel.setText("Phiên đăng nhập đã thay đổi. Vui lòng mở lại giỏ hàng.");
+                orderButton.setDisable(true);
+                return;
+            }
 
             String receiverName =
                     nameField.getText().trim();
@@ -293,6 +298,8 @@ public class CheckoutWindow {
         stage.setTitle(
                 "Fashion Shop - Đặt hàng"
         );
+
+        scene.getStylesheets().add(CheckoutWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
 
         stage.setScene(scene);
 

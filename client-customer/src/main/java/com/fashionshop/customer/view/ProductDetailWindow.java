@@ -72,7 +72,7 @@ public class ProductDetailWindow {
         priceLabel.setStyle(
                 "-fx-font-size: 20px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #d32f2f;"
+                        + "-fx-text-fill: #bd4c30;"
         );
 
         Label descriptionLabel =
@@ -111,7 +111,8 @@ public class ProductDetailWindow {
                         1
                 );
 
-        quantitySpinner.setEditable(true);
+        quantitySpinner.setEditable(false);
+        quantitySpinner.setDisable(product.getStock() <= 0);
 
         Label quantityLabel =
                 new Label("Số lượng:");
@@ -127,20 +128,30 @@ public class ProductDetailWindow {
                 new Button("Thêm vào giỏ hàng");
 
         addToCartButton.setStyle(
-                "-fx-background-color: #222222;"
+                "-fx-background-color: #c95332;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 6;"
                         + "-fx-cursor: hand;"
         );
 
+        addToCartButton.setDisable(product.getStock() <= 0);
+        if (product.getStock() <= 0) addToCartButton.setText("Tạm hết hàng");
         addToCartButton.setOnAction(event -> {
+            if (!PurchaseAccess.requireCustomer()) return;
 
             int quantity =
                     quantitySpinner.getValue();
 
-            CartService.getInstance()
-                    .addProduct(product, quantity);
+            try {
+                CartService.getInstance().addProduct(product, quantity);
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                Alert error = new Alert(Alert.AlertType.WARNING);
+                error.setHeaderText(null);
+                error.setContentText(e.getMessage());
+                error.showAndWait();
+                return;
+            }
 
             Alert alert =
                     new Alert(
@@ -205,6 +216,7 @@ public class ProductDetailWindow {
                 );
 
         stage.setTitle("Chi tiết sản phẩm");
+        scene.getStylesheets().add(ProductDetailWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }

@@ -73,7 +73,7 @@ public class ServerApplication {
 port(httpPort);
 
 staticFiles.externalLocation(
-        "D:/xampp/htdocs/GitHub/FashionShopDesktop/server/uploads"
+        java.nio.file.Paths.get("uploads").toAbsolutePath().normalize().toString()
 );
 
 

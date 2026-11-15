@@ -37,7 +37,7 @@ public class LoginWindow {
         brand.setStyle(
                 "-fx-font-size: 28px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #111827;"
+                        + "-fx-text-fill: #343d33;"
         );
 
         Label titleLabel =
@@ -48,7 +48,7 @@ public class LoginWindow {
         titleLabel.setStyle(
                 "-fx-font-size: 20px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #2563eb;"
+                        + "-fx-text-fill: #c95332;"
         );
 
         Label description =
@@ -127,7 +127,7 @@ public class LoginWindow {
         );
 
         loginButton.setStyle(
-                "-fx-background-color: #2563eb;"
+                "-fx-background-color: #c95332;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 8;"
@@ -306,6 +306,8 @@ public class LoginWindow {
         stage.setResizable(
                 false
         );
+
+        scene.getStylesheets().add(LoginWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
 
         stage.setScene(
                 scene

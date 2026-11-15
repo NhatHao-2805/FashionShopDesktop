@@ -30,6 +30,9 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.Region;
+import java.util.Comparator;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
@@ -82,6 +85,10 @@ private final Button cartButton =
     private List<Product> allProducts =
             new ArrayList<>();
 
+    private final ComboBox<String> sortBox = new ComboBox<>();
+    private ScrollPane storefrontScroll;
+    private boolean catalogLoaded;
+    private boolean catalogLoading;
     private Stage primaryStage;
 
     private boolean cartListenerRegistered =
@@ -105,6 +112,7 @@ private final Button cartButton =
     }
 
     private void configureControls() {
+        com.fashionshop.customer.view.PurchaseAccess.setLoginHandler(this::requireCustomerLogin);
 
         searchField.setPromptText(
                 "Tìm kiếm sản phẩm..."
@@ -132,217 +140,117 @@ private final Button cartButton =
                 event -> filterProducts()
         );
 
-        loginButton.setStyle(
-                "-fx-background-color: #2563eb;"
-                        + "-fx-text-fill: white;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-background-radius: 8;"
-        );
-
-        loginButton.setOnAction(
-                event -> openLogin()
-        );
-
-        ordersButton.setStyle(
-                "-fx-background-color: #1976d2;"
-                        + "-fx-text-fill: white;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-background-radius: 8;"
-        );
-
-        ordersButton.setOnAction(
-                event -> {
-
-                    if (!requireCustomerLogin()) {
-                        return;
-                    }
-
-                    MyOrdersWindow.show();
-                }
-        );
-        // =========================================================
-        // CHAT WITH SHOP
-        // =========================================================
-
-        chatButton.setStyle(
-                "-fx-background-color: #7c3aed;"
-                        + "-fx-text-fill: white;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-background-radius: 8;"
-        );
-
-        chatButton.setTooltip(
-                new javafx.scene.control.Tooltip(
-                        "Chat với shop"
-                )
-        );
-
-        chatButton.setOnAction(
-                event -> {
-
-                    if (!requireCustomerLogin()) {
-                        return;
-                    }
-
-                    CustomerChatWindow.show();
-                }
-        );
-
-
-        cartButton.setStyle(
-                "-fx-background-color: #d32f2f;"
-                        + "-fx-text-fill: white;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-background-radius: 8;"
-        );
-
-        cartButton.setOnAction(
-                event -> {
-
-                    if (!requireCustomerLogin()) {
-                        return;
-                    }
-
-                    CartWindow.show();
-                }
-        );
-
-        logoutButton.setStyle(
-                "-fx-background-color: #374151;"
-                        + "-fx-text-fill: white;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-background-radius: 8;"
-        );
-
-        logoutButton.setOnAction(
-                event -> logout()
-        );
-
-        productFlowPane.setHgap(
-                15
-        );
-
-        productFlowPane.setVgap(
-                15
-        );
-
-        productFlowPane.setPadding(
-                new Insets(10)
-        );
-
+        loginButton.setOnAction(event -> openLogin());
+        ordersButton.setOnAction(event -> { if (requireCustomerLogin()) MyOrdersWindow.show(); });
+        chatButton.setText("Chat với shop");
+        chatButton.setOnAction(event -> { if (requireCustomerLogin()) CustomerChatWindow.show(); });
+        cartButton.setOnAction(event -> { if (requireCustomerLogin()) CartWindow.show(); });
+        logoutButton.setOnAction(event -> logout());
+        loginButton.getStyleClass().add("header-button");
+        ordersButton.getStyleClass().add("header-button");
+        chatButton.getStyleClass().add("header-button");
+        logoutButton.getStyleClass().add("header-button");
+        cartButton.getStyleClass().add("cart-button");
+        searchField.setPromptText("Tìm áo, quần và phong cách của bạn...");
+        searchField.setMaxWidth(Double.MAX_VALUE);
+        sortBox.getItems().setAll("Mặc định", "Giá: thấp đến cao", "Giá: cao đến thấp", "Tên: A → Z");
+        sortBox.getSelectionModel().selectFirst();
+        sortBox.setOnAction(event -> filterProducts());
+        productFlowPane.setHgap(16);
+        productFlowPane.setVgap(20);
+        productFlowPane.setPadding(new Insets(4, 0, 20, 0));
         updateCartButtonText();
     }
 
+    private Label label(String text, String style) {
+        Label label = new Label(text);
+        label.getStyleClass().add(style);
+        label.setWrapText(true);
+        return label;
+    }
+
+    private Region spacer() {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        return spacer;
+    }
+
     private void showStorefront() {
+        Label brand = label("fashion shop", "brand");
+        HBox utility = new HBox(12, label("THỜI TRANG CHO MỖI NGÀY", "header-caption"),
+                spacer(), userLabel, loginButton, ordersButton, chatButton, logoutButton);
+        utility.setAlignment(Pos.CENTER_LEFT);
+        userLabel.getStyleClass().add("header-caption");
+        Button searchButton = new Button("Tìm kiếm");
+        searchButton.getStyleClass().add("primary-button");
+        searchButton.setOnAction(event -> filterProducts());
+        searchField.setOnAction(event -> filterProducts());
+        HBox search = new HBox(8, searchField, searchButton);
+        search.getStyleClass().add("search-box");
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        HBox.setHgrow(search, Priority.ALWAYS);
+        HBox mainHeader = new HBox(28, brand, search, cartButton);
+        mainHeader.setAlignment(Pos.CENTER_LEFT);
+        VBox header = new VBox(14, utility, mainHeader);
+        header.getStyleClass().add("shop-header");
 
-        Label titleLabel =
-                new Label("FASHION SHOP");
+        Button explore = new Button("Khám phá ngay  →");
+        explore.getStyleClass().add("primary-button");
+        explore.setOnAction(event -> storefrontScroll.setVvalue(1));
+        VBox heroText = new VBox(12, label("THE EVERYDAY EDIT", "eyebrow"),
+                label("Mặc đẹp mỗi ngày.\nTheo cách của bạn.", "hero-title"),
+                label("Những thiết kế dễ mặc, dễ phối cho tủ đồ yêu thích của bạn.", "muted"), explore);
+        heroText.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(heroText, Priority.ALWAYS);
+        VBox heroAccent = new VBox(12, label("YOUR STYLE", "eyebrow"),
+                label("Less is more.", "accent-title"),
+                label("BASIC  /  CASUAL  /  EVERYDAY", "muted"),
+                label("Tìm cảm hứng mới từ những điều đơn giản.", "muted"));
+        heroAccent.getStyleClass().add("hero-accent");
+        heroAccent.setAlignment(Pos.CENTER_LEFT);
+        heroAccent.setPrefWidth(320);
+        HBox hero = new HBox(28, heroText, heroAccent);
+        hero.getStyleClass().add("hero");
+        hero.setAlignment(Pos.CENTER_LEFT);
 
-        titleLabel.setStyle(
-                "-fx-font-size: 28px;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #111827;"
-        );
-
-        Label categoryLabel =
-                new Label("Danh mục:");
-
-        HBox spacer =
-                new HBox();
-
-        HBox.setHgrow(
-                spacer,
-                Priority.ALWAYS
-        );
-
-        HBox topBox =
-                new HBox(
-                        12,
-                        titleLabel,
-                        spacer,
-                        searchField,
-                        categoryLabel,
-                        categoryComboBox,
-                        userLabel,
-                        loginButton,
-                        ordersButton,
-                        chatButton,
-                        cartButton,
-                        logoutButton
-                );
-
-        topBox.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
-        topBox.setPadding(
-                new Insets(
-                        14
-                )
-        );
-
-        topBox.setStyle(
-                "-fx-background-color: white;"
-                        + "-fx-border-color: transparent transparent #e5e7eb transparent;"
-        );
-
-        ScrollPane scrollPane =
-                new ScrollPane(
-                        productFlowPane
-                );
-
-        scrollPane.setFitToWidth(
-                true
-        );
-
-        scrollPane.setStyle(
-                "-fx-background-color: #f9fafb;"
-                        + "-fx-background: #f9fafb;"
-        );
-
-        BorderPane root =
-                new BorderPane();
-
-        root.setStyle(
-                "-fx-background-color: #f9fafb;"
-        );
-
-        root.setTop(
-                topBox
-        );
-
-        root.setCenter(
-                scrollPane
-        );
-
-        root.setBottom(
-                statusLabel
-        );
-
-        BorderPane.setMargin(
-                statusLabel,
-                new Insets(
-                        12
-                )
-        );
-
-        Scene scene =
-                new Scene(
-                        root,
-                        1400,
-                        760
-                );
-
-        primaryStage.setTitle(
-                "Fashion Shop"
-        );
-
-        primaryStage.setScene(
-                scene
-        );
-
+        HBox benefits = new HBox(24, label("01   Chọn phong cách", "benefit"), spacer(),
+                label("02   Thêm vào giỏ hàng", "benefit"), spacer(),
+                label("03   Đặt hàng dễ dàng", "benefit"));
+        benefits.getStyleClass().add("benefits");
+        Button clear = new Button("Xóa bộ lọc");
+        clear.getStyleClass().add("soft-button");
+        clear.setOnAction(event -> {
+            searchField.clear();
+            categoryComboBox.getSelectionModel().clearSelection();
+            sortBox.getSelectionModel().selectFirst();
+            filterProducts();
+        });
+        HBox filters = new HBox(12, label("Danh mục", "muted"), categoryComboBox,
+                spacer(), label("Sắp xếp", "muted"), sortBox, clear);
+        filters.setAlignment(Pos.CENTER_LEFT);
+        filters.getStyleClass().add("filter-bar");
+        HBox collectionTitle = new HBox(12, label("Khám phá sản phẩm", "section-title"), spacer(),
+                label("TỦ ĐỒ MỚI BẮT ĐẦU TỪ ĐÂY", "eyebrow"));
+        collectionTitle.setAlignment(Pos.CENTER_LEFT);
+        statusLabel.getStyleClass().add("muted");
+        VBox content = new VBox(22, hero, benefits, collectionTitle, filters, statusLabel, productFlowPane,
+                label("FASHION SHOP   •   Phong cách của bạn, lựa chọn của bạn.", "footer"));
+        content.getStyleClass().add("store-content");
+        content.setMaxWidth(1240);
+        VBox wrapper = new VBox(content);
+        wrapper.setAlignment(Pos.TOP_CENTER);
+        storefrontScroll = new ScrollPane(wrapper);
+        storefrontScroll.setFitToWidth(true);
+        storefrontScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        BorderPane root = new BorderPane(storefrontScroll);
+        root.setTop(header);
+        Scene scene = new Scene(root, 1320, 860);
+        scene.getStylesheets().add(getClass().getResource("/com/fashionshop/customer/shop.css").toExternalForm());
+        primaryStage.setTitle("Fashion Shop | Thời trang mỗi ngày");
+        primaryStage.setMinWidth(1000);
+        primaryStage.setMinHeight(680);
+        primaryStage.setScene(scene);
         primaryStage.show();
-
         refreshAuthenticationUi();
     }
 
@@ -454,13 +362,9 @@ private final Button cartButton =
         chatButton.setManaged(
                 customer
         );
-cartButton.setVisible(
-                customer
-        );
+cartButton.setVisible(true);
 
-        cartButton.setManaged(
-                customer
-        );
+        cartButton.setManaged(true);
 
         if (loggedIn) {
 
@@ -529,6 +433,10 @@ cartButton.setVisible(
     }
 
     private void loadData() {
+        if (catalogLoading) return;
+        catalogLoading = true;
+        catalogLoaded = false;
+        productFlowPane.getChildren().clear();
 
         statusLabel.setText(
                 "Đang tải dữ liệu..."
@@ -557,9 +465,9 @@ cartButton.setVisible(
                                                     categories
                                             );
 
-                                    displayProducts(
-                                            allProducts
-                                    );
+                                    catalogLoading = false;
+                                    catalogLoaded = true;
+                                    filterProducts();
                                 }
                         );
 
@@ -570,9 +478,18 @@ cartButton.setVisible(
         task.setOnFailed(
                 event -> {
 
-                    statusLabel.setText(
-                            "Không thể tải dữ liệu từ server."
-                    );
+                    catalogLoading = false;
+                    catalogLoaded = false;
+                    statusLabel.setText("Không thể tải sản phẩm từ "
+                            + com.fashionshop.customer.config.ServerConfig.getBaseUrl());
+                    Button retry = new Button("Thử tải lại");
+                    retry.getStyleClass().add("primary-button");
+                    retry.setOnAction(e -> loadData());
+                    VBox error = new VBox(12,
+                            label("Chưa kết nối được cửa hàng", "section-title"),
+                            label("Hãy bật MySQL trong XAMPP và chạy server, sau đó nhấn Thử tải lại.", "muted"), retry);
+                    error.getStyleClass().add("empty-state");
+                    productFlowPane.getChildren().setAll(error);
 
                     if (task.getException()
                             != null) {
@@ -594,6 +511,7 @@ cartButton.setVisible(
     }
 
     private void filterProducts() {
+        if (!catalogLoaded) return;
 
         String keyword =
                 searchField.getText()
@@ -658,9 +576,12 @@ cartButton.setVisible(
                         )
                         .toList();
 
-        displayProducts(
-                filteredProducts
-        );
+        List<Product> sorted = new ArrayList<>(filteredProducts);
+        String sort = sortBox.getValue();
+        if ("Giá: thấp đến cao".equals(sort)) sorted.sort(Comparator.comparingDouble(Product::getPrice));
+        else if ("Giá: cao đến thấp".equals(sort)) sorted.sort(Comparator.comparingDouble(Product::getPrice).reversed());
+        else if ("Tên: A → Z".equals(sort)) sorted.sort(Comparator.comparing(p -> p.getName() == null ? "" : p.getName(), String.CASE_INSENSITIVE_ORDER));
+        displayProducts(sorted);
     }
 
     private void displayProducts(
@@ -686,6 +607,12 @@ cartButton.setVisible(
                     );
         }
 
+        if (products.isEmpty()) {
+            VBox empty = new VBox(10, label("Chưa tìm thấy sản phẩm phù hợp", "section-title"),
+                    label("Thử từ khóa khác hoặc xóa bộ lọc để xem thêm sản phẩm.", "muted"));
+            empty.getStyleClass().add("empty-state");
+            productFlowPane.getChildren().add(empty);
+        }
         statusLabel.setText(
                 "Đang hiển thị "
                         + products.size()

@@ -144,6 +144,8 @@ public class MyOrdersWindow {
                 "Fashion Shop - Đơn hàng của tôi"
         );
 
+        scene.getStylesheets().add(MyOrdersWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
+
         stage.setScene(scene);
         stage.show();
 
@@ -337,7 +339,7 @@ public class MyOrdersWindow {
                 );
 
         detailButton.setStyle(
-                "-fx-background-color: #1976d2;"
+                "-fx-background-color: #c95332;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
         );

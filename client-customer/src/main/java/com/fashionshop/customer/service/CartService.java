@@ -30,6 +30,17 @@ public class CartService {
             int quantity
     ) {
 
+        SessionManager.getInstance().requireCustomer();
+        if (product == null || quantity <= 0) {
+            throw new IllegalArgumentException("Sản phẩm và số lượng không hợp lệ.");
+        }
+        int existingQuantity = items.stream()
+                .filter(item -> item.getProduct().getId() == product.getId())
+                .mapToInt(CartItem::getQuantity).sum();
+        if (product.getStock() <= 0 || (long) existingQuantity + quantity > product.getStock()) {
+            throw new IllegalArgumentException("Số lượng trong giỏ vượt quá tồn kho. Hiện còn " + product.getStock() + " sản phẩm.");
+        }
+
         for (CartItem item : items) {
 
             if (item.getProduct().getId()
