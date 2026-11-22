@@ -20,8 +20,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 import java.io.File;
 import java.util.List;
@@ -41,8 +39,6 @@ public class AdminProductFormWindow {
 
     private final Runnable onSaved;
 
-    private final Stage stage =
-            new Stage();
 
     private final TextField nameField =
             new TextField();
@@ -79,11 +75,7 @@ public class AdminProductFormWindow {
     private final ImageView imagePreview =
             new ImageView();
 
-    private final Label messageLabel =
-            new Label();
-
-    private final ProgressIndicator progress =
-            new ProgressIndicator();
+    private final OperationStatus status = new OperationStatus();
 
     private final Button saveButton =
             new Button(
@@ -132,25 +124,8 @@ public class AdminProductFormWindow {
 
     private void open() {
 
-        stage.initModality(
-                Modality.APPLICATION_MODAL
-        );
-
         boolean editing =
                 editingProduct != null;
-
-        Label title =
-                new Label(
-                        editing
-                                ? "SỬA SẢN PHẨM"
-                                : "THÊM SẢN PHẨM"
-                );
-
-        title.setStyle(
-                "-fx-font-size: 24px;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #111827;"
-        );
 
         Label subtitle =
                 new Label(
@@ -160,7 +135,7 @@ public class AdminProductFormWindow {
                 );
 
         subtitle.setStyle(
-                "-fx-text-fill: #6b7280;"
+                "-fx-text-fill: #41596c;"
         );
 
         configureFields();
@@ -336,7 +311,7 @@ public class AdminProductFormWindow {
         );
 
         saveButton.setStyle(
-                "-fx-background-color: #2563eb;"
+                "-fx-background-color: #294b61;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 8;"
@@ -356,39 +331,22 @@ public class AdminProductFormWindow {
         );
 
         cancelButton.setStyle(
-                "-fx-background-color: #e5e7eb;"
-                        + "-fx-text-fill: #111827;"
+                "-fx-background-color: #adbfce;"
+                        + "-fx-text-fill: #1d2e3b;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 8;"
         );
 
         cancelButton.setOnAction(
-                event -> stage.close()
+                event -> PageNavigation.back(saveButton.getScene())
         );
-
-        progress.setPrefSize(
-                22,
-                22
-        );
-
-        progress.setVisible(
-                false
-        );
-
-        progress.setManaged(
-                false
-        );
-
-        messageLabel.setWrapText(
-                true
-        );
+        cancelButton.disableProperty().bind(chooseImageButton.disableProperty());
 
         HBox buttons =
                 new HBox(
                         10,
                         saveButton,
-                        cancelButton,
-                        progress
+                        cancelButton
                 );
 
         buttons.setAlignment(
@@ -398,12 +356,11 @@ public class AdminProductFormWindow {
         VBox content =
                 new VBox(
                         10,
-                        title,
                         subtitle,
                         new Separator(),
                         form,
                         buttons,
-                        messageLabel
+                        status
                 );
 
         content.setPadding(
@@ -411,7 +368,7 @@ public class AdminProductFormWindow {
         );
 
         content.setStyle(
-                "-fx-background-color: white;"
+                "-fx-background-color: #edf3f7;"
         );
 
         ScrollPane scrollPane =
@@ -425,7 +382,7 @@ public class AdminProductFormWindow {
 
         scrollPane.setStyle(
                 "-fx-background: white;"
-                        + "-fx-background-color: white;"
+                        + "-fx-background-color: #edf3f7;"
         );
 
         Scene scene =
@@ -435,19 +392,9 @@ public class AdminProductFormWindow {
                         820
                 );
 
-        stage.setTitle(
-                editing
-                        ? "Fashion Shop - Sửa sản phẩm"
-                        : "Fashion Shop - Thêm sản phẩm"
-        );
-
-        stage.setScene(
-                scene
-        );
-
+        PageNavigation.show(editing ? "Sửa sản phẩm" : "Thêm sản phẩm", scene);
+        PageNavigation.guardBack(scene, () -> !chooseImageButton.isDisabled());
         loadCategories();
-
-        stage.showAndWait();
     }
 
     private VBox createImageBox() {
@@ -469,7 +416,7 @@ public class AdminProductFormWindow {
         );
 
         chooseImageButton.setStyle(
-                "-fx-background-color: #111827;"
+                "-fx-background-color: #1d2e3b;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 8;"
@@ -488,7 +435,7 @@ public class AdminProductFormWindow {
         );
 
         imageInfoLabel.setStyle(
-                "-fx-text-fill: #6b7280;"
+                "-fx-text-fill: #41596c;"
         );
 
         VBox previewContainer =
@@ -506,7 +453,7 @@ public class AdminProductFormWindow {
         );
 
         previewContainer.setStyle(
-                "-fx-background-color: #f3f4f6;"
+                "-fx-background-color: #dce6ee;"
                         + "-fx-border-color: #d1d5db;"
                         + "-fx-border-radius: 8;"
                         + "-fx-background-radius: 8;"
@@ -685,7 +632,7 @@ public class AdminProductFormWindow {
 
         File file =
                 chooser.showOpenDialog(
-                        stage
+                        PageNavigation.window()
                 );
 
         if (file == null) {
@@ -774,6 +721,8 @@ public class AdminProductFormWindow {
     }
 
     private void loadCategories() {
+        status.loading("Đang tải danh mục sản phẩm…");
+        saveButton.setDisable(true);
 
         categoryBox.setDisable(
                 true
@@ -792,9 +741,14 @@ public class AdminProductFormWindow {
 
         task.setOnSucceeded(
                 event -> {
-
                     List<Category> categories =
                             task.getValue();
+                    saveButton.setDisable(false);
+                    if (categories.isEmpty()) {
+                        status.empty("Chưa có danh mục sản phẩm.");
+                    } else {
+                        status.info("");
+                    }
 
                     categoryBox.getItems()
                             .setAll(
@@ -835,9 +789,7 @@ public class AdminProductFormWindow {
                             false
                     );
 
-                    showError(
-                            "Không tải được danh mục."
-                    );
+                    status.error("Không tải được danh mục.", this::loadCategories);
                 }
         );
 
@@ -1017,7 +969,7 @@ public class AdminProductFormWindow {
                         if (selectedImageFile != null) {
 
                             updateMessage(
-                                    "Đang upload ảnh..."
+                                    "Đang tải ảnh sản phẩm lên… Vui lòng chờ."
                             );
 
                             String uploadedImagePath =
@@ -1031,7 +983,7 @@ public class AdminProductFormWindow {
                         }
 
                         updateMessage(
-                                "Đang lưu sản phẩm..."
+                                "Đang lưu sản phẩm… Nút lưu tạm khóa đến khi máy chủ phản hồi."
                         );
 
                         if (editingProduct == null) {
@@ -1082,12 +1034,10 @@ public class AdminProductFormWindow {
 
                     alert.showAndWait();
 
+                    PageNavigation.back(saveButton.getScene());
                     if (onSaved != null) {
-
                         onSaved.run();
                     }
-
-                    stage.close();
                 }
         );
 
@@ -1119,75 +1069,22 @@ public class AdminProductFormWindow {
         thread.start();
     }
 
-    private void setLoading(
-            boolean loading
-    ) {
-
-        Platform.runLater(
-                () -> {
-
-                    saveButton.setDisable(
-                            loading
-                    );
-
-                    chooseImageButton.setDisable(
-                            loading
-                    );
-
-                    progress.setVisible(
-                            loading
-                    );
-
-                    progress.setManaged(
-                            loading
-                    );
-
-                    if (!loading) {
-
-                        messageLabel.setText(
-                                ""
-                        );
-                    }
-                }
-        );
+    private void setLoading(boolean loading) {
+        saveButton.setDisable(loading);
+        chooseImageButton.setDisable(loading);
+        if (loading) {
+            status.loading("Đang chuẩn bị lưu sản phẩm…");
+        } else {
+            status.info("");
+        }
     }
 
-    private void updateMessage(
-            String message
-    ) {
-
-        Platform.runLater(
-                () -> {
-
-                    messageLabel.setStyle(
-                            "-fx-text-fill: #6b7280;"
-                    );
-
-                    messageLabel.setText(
-                            message
-                    );
-                }
-        );
+    private void updateMessage(String message) {
+        Platform.runLater(() -> status.loading(message));
     }
 
-    private void showError(
-            String message
-    ) {
-
-        Platform.runLater(
-                () -> {
-
-                    messageLabel.setStyle(
-                            "-fx-text-fill: #dc2626;"
-                    );
-
-                    messageLabel.setText(
-                            message == null
-                                    ? "Đã xảy ra lỗi."
-                                    : message
-                    );
-                }
-        );
+    private void showError(String message) {
+        status.error(message == null ? "Không thể hoàn tất thao tác." : message, null);
     }
 
     private Label label(

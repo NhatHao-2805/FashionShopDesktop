@@ -15,11 +15,13 @@
 | --- | --- |
 | `server/` | Java server dùng Spark Java, JDBC, JWT và WebSocket |
 | `client-customer/` | Giao diện JavaFX chính, gồm chức năng khách hàng và quản trị |
-| `client-admin/` | Client quản trị riêng |
+| `client-admin/` | Client chỉ dành cho quản trị viên, dùng chung các màn hình quản trị với client chính |
 | `database/` | Script tạo bảng và dữ liệu mẫu |
 | `server/uploads/products/` | Ảnh sản phẩm |
 
 Yêu cầu: **JDK 21**, **Maven 3.9+**, **MySQL/MariaDB** (có thể dùng MySQL trong XAMPP), kết nối Internet cho lần đầu tải thư viện Maven. Đây là ứng dụng desktop Java, không cần chạy Apache/PHP.
+
+Trên Windows, sau khi tải mã nguồn và cài các công cụ trên, có thể dùng mục **Chạy nhanh trên Windows** để bỏ qua phần thiết lập thủ công.
 
 ## Cài đặt
 
@@ -79,7 +81,39 @@ Cấu hình hiện tại dành cho môi trường phát triển cục bộ. Đi�
 
 **Đường dẫn ảnh:** server phục vụ ảnh từ thư mục tương đối `uploads` của thư mục chạy. Hãy chạy Maven từ thư mục `server` để việc xem và upload ảnh cùng dùng `server/uploads/products`.
 
-## Chạy ứng dụng
+## Chạy nhanh trên Windows
+
+Từ thư mục gốc, sau khi cài JDK 21, Maven và XAMPP/MariaDB:
+
+```powershell
+# Máy mới, tạo database và nạp dữ liệu mẫu một lần
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run-shop.ps1 -DatabaseAction Initialize
+
+# Đang dùng database từ phiên bản trước, sao lưu và dừng server cũ trước khi nâng cấp
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run-shop.ps1 -DatabaseAction Migrate
+
+# Các lần chạy tiếp theo
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run-shop.ps1
+```
+
+Script tạo cấu hình cục bộ với khóa JWT ngẫu nhiên, khởi động MariaDB của XAMPP khi cần và chờ máy chủ tải được danh mục trước khi mở hai ứng dụng. Nếu dùng schema mặc định, các lần chạy sau có thể kết nối lại máy chủ FashionShop đang chạy.
+
+- Dùng `-Client Customer`, `-Client Admin` hoặc `-Client None` để chọn cửa sổ cần mở.
+- Dùng `-XamppRoot D:\xampp` nếu script chưa tìm được XAMPP và `-Port 18085` nếu cần chọn cổng cụ thể.
+- Sau khi Maven đã tải đủ thư viện, có thể dùng `-Offline` để chạy bằng bộ nhớ đệm cục bộ.
+- Terminal hiển thị các bước khởi động, địa chỉ máy chủ và vị trí log trong thư mục `target` của từng mô-đun.
+
+Để trình diễn bằng một bộ dữ liệu riêng, chạy lệnh sau từ bản sao mã nguồn chưa có `application.properties`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run-shop.ps1 -DatabaseAction Initialize -DatabaseName fashion_demo -Port 18111
+```
+
+Script ghi tên schema vào cấu hình của bản sao đó. Nếu schema hoặc cổng đã được dùng, chọn một tên hoặc cổng khác.
+
+`Initialize` và `Migrate` dùng tài khoản root mặc định của XAMPP trên máy cục bộ. Nếu dùng cấu hình database hoặc tài khoản khác, nhập SQL bằng tài khoản của bạn rồi chạy script với cấu hình mặc định `-DatabaseAction Check`. `Initialize` từ chối chạy nếu database đã tồn tại.
+
+## Chạy thủ công
 
 Mở hai cửa sổ terminal tại thư mục dự án.
 
@@ -106,12 +140,14 @@ mvn javafx:run
 
 Cửa sổ **Fashion Shop** sẽ xuất hiện. Client chính có cả chức năng khách hàng và quản trị theo vai trò đăng nhập.
 
-Có thể chạy client quản trị riêng bằng một terminal khác:
+Có thể chạy client quản trị riêng từ thư mục gốc dự án. Cài mô-đun giao diện dùng chung vào kho Maven cục bộ trước lần chạy đầu và sau mỗi lần sửa mô-đun đó:
 
 ```powershell
-cd client-admin
-mvn javafx:run
+mvn -f client-customer/pom.xml install
+mvn -f client-admin/pom.xml javafx:run
 ```
+
+Client riêng yêu cầu tài khoản ADMIN. Sau khi đăng nhập, quản trị viên có thể mở đơn hàng, sản phẩm, khách hàng, kho và tin nhắn. **Tổng quan và thống kê** hiển thị số đơn theo trạng thái, số khách hàng, số sản phẩm, tồn kho và doanh thu từ đơn đã giao. Nếu server chạy ở cổng khác `8080`, đặt `FASHION_SERVER_URL` trong terminal trước khi chạy client, ví dụ `$env:FASHION_SERVER_URL = "http://127.0.0.1:18080"`.
 
 Dừng client bằng cách đóng cửa sổ; dừng server bằng `Ctrl+C` trong terminal server.
 
@@ -139,14 +175,14 @@ $env:FASHION_SERVER_URL = "http://192.168.1.10:8080"
 mvn javafx:run
 ```
 
-Hai máy cần kết nối được với nhau, firewall máy chủ cho phép cổng HTTP đã cấu hình. Thiết lập này áp dụng cho `client-customer`; kiểm tra cấu hình URL riêng của `client-admin` nếu dùng client đó. Không dùng `localhost` để trỏ tới máy khác.
+Hai máy cần kết nối được với nhau và firewall máy chủ cần cho phép cổng HTTP đã cấu hình. Cả `client-customer` và `client-admin` đều đọc `FASHION_SERVER_URL`. Dùng IP của máy chủ khi chạy client ở máy khác.
 
 ## Lưu ý và xử lý lỗi
 
 - **Không kết nối database:** kiểm tra MySQL đã bật, cổng 3306, tên database, tài khoản và mật khẩu trong `application.properties`.
 - **Client không tải dữ liệu:** chạy server trước, kiểm tra API health và địa chỉ `FASHION_SERVER_URL`.
 - **Cổng 8080 đang dùng:** dừng tiến trình chiếm cổng hoặc đổi `server.http.port`, đồng thời đổi URL phía client.
-- **Ảnh không hiển thị:** kiểm tra đường dẫn static ở trên và file ảnh tương ứng. Một số ảnh mà seed tham chiếu có thể chưa có trong mã nguồn; bổ sung ảnh hoặc cập nhật sản phẩm qua quản trị.
+- **Ảnh không hiển thị:** ảnh của các sản phẩm mẫu nằm trong `server/uploads/products`. Với sản phẩm tự thêm, kiểm tra tệp ảnh trên máy chạy server hoặc cập nhật ảnh qua màn hình quản trị sản phẩm.
 - **Lỗi `release version 21 not supported`:** Maven đang dùng JDK cũ; chỉnh `JAVA_HOME` về JDK 21.
 - **Maven không tải được thư viện:** kiểm tra Internet, proxy và cấu hình Maven. Lần đầu không dùng chế độ offline `-o`.
 - **Dữ liệu mẫu:** chỉ dùng cho học tập/thử nghiệm. Thay mật khẩu mẫu và `jwt.secret` trước khi triển khai thật; không công khai thông tin kết nối thật trên GitHub.
@@ -168,8 +204,10 @@ Dự án gồm các module Maven riêng; chạy lệnh trong từng thư mục c
 
 - Khách chọn size/màu trên cửa sổ chi tiết trước khi thêm vào giỏ.
 - Giỏ và đơn hàng tách theo sản phẩm + size + màu; server kiểm tra lựa chọn thuộc cấu hình sản phẩm.
-- Database cũ: sao lưu rồi chạy `database/migrate_size_color.sql` một lần trước khi khởi động bản mới. Database mới đã có hai cột này trong script tạo bảng.
-- Tồn kho hiện vẫn là tổng theo sản phẩm, chưa phân bổ số lượng riêng cho từng size/màu. Không tự chia tồn kho cũ vì không có dữ liệu phân bổ thực tế.
+- Database cũ cần áp dụng `database/migrate_variant_stock.sql` trước khi khởi động bản mới. Nếu chưa có `selected_size` và `selected_color` trong `order_items`, áp dụng `database/migrate_size_color.sql` trước. Database mới có sẵn cả hai thay đổi trong script tạo bảng.
+- Trong **Kho hàng → Phân bổ size/màu**, nhập số lượng thực tế cho từng tổ hợp. Sản phẩm cũ tiếp tục bán theo tồn chung cho đến khi quản trị viên lưu phân bổ lần đầu. Từ thời điểm đó, chỉ phần đã phân bổ mới bán được. Sản phẩm mẫu trên database mới đã có số lượng riêng cho mỗi tổ hợp.
+- Trong **Điều chỉnh kho**, nhập hàng để tăng tổng tồn, sau đó phân bổ số mới cho từng size/màu. Khi xuất kho, giảm số phân bổ của tổ hợp cần xuất để số đó trở về phần chưa phân bổ. Việc phân bổ giữ nguyên tổng tồn.
+- Khi hủy đơn, hàng được hoàn về đúng biến thể đã trừ. Đơn tạo trước khi sản phẩm có phân bổ hoàn về phần chưa phân bổ; quản trị viên có thể phân bổ lại sau khi kiểm hàng. Các size/màu đã có dòng tồn kho cần được giữ trong cấu hình sản phẩm để bảo toàn lịch sử giao dịch.
 
 ## Quyền tài khoản ở API được bảo vệ
 
@@ -180,7 +218,7 @@ Thay đổi này không chủ động đóng các kết nối WebSocket đã m�
 ## Xác nhận giá, tồn kho và thông tin giao hàng
 
 - Khi đặt hàng, client tải danh sách sản phẩm mới nhất trên luồng nền. Nếu giá hoặc tồn kho đổi, hiển thị thông tin và tổng tiền mới để khách xác nhận; hủy xác nhận thì không tạo đơn.
-- Nếu sản phẩm ngừng bán, lựa chọn size/màu không còn hợp lệ hoặc tổng số lượng cùng sản phẩm vượt tồn kho, yêu cầu sửa giỏ hàng trước.
+- Nếu sản phẩm ngừng bán, lựa chọn size/màu không còn hợp lệ hoặc số lượng vượt tồn của biến thể, yêu cầu sửa giỏ hàng trước. Sản phẩm chưa phân bổ dùng tổng tồn chung.
 - Client gửi `expectedPrice` cho từng dòng đơn. Server so sánh với giá trong database dưới khóa `FOR UPDATE`, rồi mới tạo đơn/trừ kho. Nếu giá đổi sau bước xác nhận, transaction bị hủy và khách phải kiểm tra lại.
 - Cập nhật server và client cùng phiên bản: client cũ không gửi `expectedPrice` sẽ bị yêu cầu tải lại giỏ hàng.
 - Tên người nhận: 2–100 ký tự; địa chỉ: 10–500 ký tự; ghi chú: tối đa 1000 ký tự.

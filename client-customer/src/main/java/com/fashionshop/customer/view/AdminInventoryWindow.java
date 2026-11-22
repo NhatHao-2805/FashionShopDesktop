@@ -10,7 +10,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,11 +36,8 @@ public class AdminInventoryWindow {
     private final Label summaryLabel =
             new Label();
 
-    private final Label statusLabel =
-            new Label();
-
-    private final ProgressIndicator progress =
-            new ProgressIndicator();
+    private final OperationStatus status = new OperationStatus();
+    private boolean stockLoaded;
 
     private List<InventoryService.StockItem> allStock =
             new ArrayList<>();
@@ -54,26 +50,13 @@ public class AdminInventoryWindow {
 
     private void open() {
 
-        Stage stage =
-                new Stage();
-
-        Label title =
-                new Label(
-                        "QUẢN LÝ KHO HÀNG"
-                );
-
-        title.setStyle(
-                "-fx-font-size: 26px;"
-                        + "-fx-font-weight: bold;"
-        );
-
         Label subtitle =
                 new Label(
                         "Theo dõi tồn kho và toàn bộ lịch sử nhập / xuất."
                 );
 
         subtitle.setStyle(
-                "-fx-text-fill: #6b7280;"
+                "-fx-text-fill: #41596c;"
         );
 
         searchField.setPromptText(
@@ -100,11 +83,13 @@ public class AdminInventoryWindow {
                 );
 
         refresh.setStyle(
-                "-fx-background-color: #2563eb;"
+                "-fx-background-color: #294b61;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
         );
 
+        refresh.disableProperty().bind(status.busyProperty());
+        stockTable.disableProperty().bind(status.busyProperty());
         refresh.setOnAction(
                 event -> loadAll()
         );
@@ -182,40 +167,15 @@ public class AdminInventoryWindow {
                 0.52
         );
 
-        progress.setPrefSize(
-                22,
-                22
-        );
-
-        progress.setVisible(
-                false
-        );
-
-        progress.setManaged(
-                false
-        );
-
-        HBox footer =
-                new HBox(
-                        14,
-                        progress,
-                        statusLabel,
-                        summaryLabel
-                );
-
-        footer.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
         VBox root =
                 new VBox(
                         8,
-                        title,
                         subtitle,
                         new Separator(),
                         toolbar,
+                        status,
                         splitPane,
-                        footer
+                        summaryLabel
                 );
 
         root.setPadding(
@@ -223,7 +183,7 @@ public class AdminInventoryWindow {
         );
 
         root.setStyle(
-                "-fx-background-color: #f9fafb;"
+                "-fx-background-color: #dce6ee;"
         );
 
         VBox.setVgrow(
@@ -238,15 +198,7 @@ public class AdminInventoryWindow {
                         820
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Kho hàng"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.show();
+        PageNavigation.show("Kho hàng", scene);
 
         loadAll();
     }
@@ -379,7 +331,7 @@ public class AdminInventoryWindow {
                 );
 
         action.setPrefWidth(
-                170
+                265
         );
 
         action.setCellFactory(
@@ -390,11 +342,13 @@ public class AdminInventoryWindow {
                                     new Button(
                                             "Điều chỉnh kho"
                                     );
+                            private final Button variants = new Button("Phân bổ size/màu");
+                            private final HBox actions = new HBox(8, button, variants);
 
                             {
 
                                 button.setStyle(
-                                        "-fx-background-color: #2563eb;"
+                                        "-fx-background-color: #294b61;"
                                                 + "-fx-text-fill: white;"
                                                 + "-fx-font-weight: bold;"
                                 );
@@ -423,9 +377,16 @@ public class AdminInventoryWindow {
                                                     AdminInventoryWindow
                                                             .this
                                                             ::loadAll
-                                            ).showAndWait();
+                                            ).show();
                                         }
                                 );
+                                variants.setOnAction(event -> {
+                                    var row = getTableRow().getItem();
+                                    if (row != null) {
+                                        new AdminVariantStockDialog(inventoryService, row,
+                                                AdminInventoryWindow.this::loadAll).show();
+                                    }
+                                });
                             }
 
                             @Override
@@ -442,7 +403,7 @@ public class AdminInventoryWindow {
                                 setGraphic(
                                         empty
                                                 ? null
-                                                : button
+                                                : actions
                                 );
                             }
                         }
@@ -462,11 +423,7 @@ public class AdminInventoryWindow {
                 TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN
         );
 
-        stockTable.setPlaceholder(
-                new Label(
-                        "Không có dữ liệu kho."
-                )
-        );
+        stockTable.setPlaceholder(new Label());
     }
 
     private void configureHistoryTable() {
@@ -628,10 +585,13 @@ public class AdminInventoryWindow {
 
     private void loadAll() {
 
-        setLoading(
-                true,
-                "Đang tải dữ liệu kho..."
-        );
+        if (status.isBusy()) return;
+        var stockPosition = TablePosition.capture(stockTable, InventoryService.StockItem::getProductId);
+        var historyPosition = TablePosition.capture(historyTable, InventoryService.InventoryTransaction::getId);
+        stockLoaded = false;
+        summaryLabel.setText("");
+        historyTable.setPlaceholder(new Label());
+        status.loading("Đang tải tồn kho và lịch sử giao dịch…");
 
         Task<InventoryData> task =
                 new Task<>() {
@@ -675,27 +635,21 @@ public class AdminInventoryWindow {
                                     )
                     );
 
+                    stockLoaded = true;
+                    historyTable.setPlaceholder(new Label("Chưa có lịch sử giao dịch kho."));
+                    status.info("");
                     applyFilter();
-
-                    setLoading(
-                            false,
-                            "Dữ liệu kho đã được cập nhật."
-                    );
+                    stockPosition.restore(stockTable, InventoryService.StockItem::getProductId);
+                    historyPosition.restore(historyTable, InventoryService.InventoryTransaction::getId);
                 }
         );
 
-        task.setOnFailed(
-                event -> {
-
-                    setLoading(
-                            false,
-                            "Không thể tải dữ liệu kho: "
-                                    + errorMessage(
-                                    task.getException()
-                            )
-                    );
-                }
-        );
+        task.setOnFailed(event -> {
+            allStock.clear();
+            stockTable.getItems().clear();
+            historyTable.getItems().clear();
+            status.error("Không tải được dữ liệu kho: " + errorMessage(task.getException()), this::loadAll);
+        });
 
         Thread thread =
                 new Thread(task);
@@ -765,6 +719,14 @@ public class AdminInventoryWindow {
                         result
                 )
         );
+
+        if (!stockLoaded || status.isBusy()) return;
+        if (result.isEmpty()) {
+            status.empty(allStock.isEmpty() ? "Chưa có sản phẩm trong kho."
+                    : "Không có sản phẩm kho phù hợp với bộ lọc.");
+        } else {
+            status.info("Đang hiển thị " + result.size() + " sản phẩm trong kho.");
+        }
 
         long outOfStock =
                 allStock.stream()
@@ -852,24 +814,6 @@ public class AdminInventoryWindow {
             default ->
                     type;
         };
-    }
-
-    private void setLoading(
-            boolean loading,
-            String message
-    ) {
-
-        progress.setVisible(
-                loading
-        );
-
-        progress.setManaged(
-                loading
-        );
-
-        statusLabel.setText(
-                message
-        );
     }
 
     private String errorMessage(

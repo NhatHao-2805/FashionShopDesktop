@@ -8,31 +8,31 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 public class LoginWindow {
 
     private final AuthService authService =
             new AuthService();
 
-    private boolean loginSuccess =
-            false;
+    private final boolean adminOnly;
 
-    public boolean showAndWait() {
+    public LoginWindow() {
+        this(false);
+    }
 
-        Stage stage =
-                new Stage();
+    public LoginWindow(boolean adminOnly) {
+        this.adminOnly = adminOnly;
+    }
 
-        stage.initModality(
-                Modality.APPLICATION_MODAL
-        );
+    public void show(Runnable onSuccess) {
 
         Label brand = new Label("Fashion Shop");
         brand.getStyleClass().add("brand");
 
-        Label titleLabel = new Label("Đăng nhập");
+        Label titleLabel = new Label(adminOnly ? "Đăng nhập quản trị" : "Đăng nhập");
         titleLabel.getStyleClass().add("section-title");
 
         TextField emailField =
@@ -156,16 +156,12 @@ public class LoginWindow {
                                         try {
 
                                             User user =
-                                                    authService.login(
-                                                            email,
-                                                            password
-                                                    );
+                                                    adminOnly
+                                                            ? authService.loginAdmin(email, password)
+                                                            : authService.login(email, password);
 
                                             Platform.runLater(
                                                     () -> {
-
-                                                        loginSuccess =
-                                                                true;
 
                                                         messageLabel.setStyle(
                                                                 "-fx-text-fill: #16a34a;"
@@ -176,7 +172,9 @@ public class LoginWindow {
                                                                         + user.getName()
                                                         );
 
-                                                        stage.close();
+                                                        loginButton.setDisable(false);
+                                                        PageNavigation.back(loginButton.getScene());
+                                                        onSuccess.run();
                                                     }
                                             );
 
@@ -244,24 +242,14 @@ public class LoginWindow {
         root.setPadding(new Insets(28, 38, 28, 38));
         messageLabel.managedProperty().bind(messageLabel.textProperty().isNotEmpty());
 
-        Scene scene = new Scene(root, 440, 415);
-
-        stage.setTitle(
-                "Fashion Shop - Đăng nhập"
-        );
-
-        stage.setResizable(
-                false
-        );
-
+        root.setMaxSize(440, Region.USE_PREF_SIZE);
+        Scene scene = new Scene(new StackPane(root), 1000, 720);
         scene.getStylesheets().add(LoginWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
-
-        stage.setScene(
-                scene
-        );
-
-        stage.showAndWait();
-
-        return loginSuccess;
+        if (adminOnly) {
+            PageNavigation.reset("Đăng nhập quản trị", scene);
+        } else {
+            PageNavigation.show("Đăng nhập", scene);
+        }
+        PageNavigation.guardBack(scene, () -> !loginButton.isDisabled());
     }
 }

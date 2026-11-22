@@ -1,6 +1,25 @@
 package com.fashionshop.customer.model;
 
 public class Product {
+    private record Variant(String size, String color, int stock) {}
+
+    private java.util.List<Variant> variants;
+
+    public boolean tracksVariants() {
+        return variants != null && !variants.isEmpty();
+    }
+
+    public int availableStock(String size, String color) {
+        if (!tracksVariants()) {
+            return stock;
+        }
+        String selectedSize = size == null ? "" : size;
+        String selectedColor = color == null ? "" : color;
+        return variants.stream()
+                .filter(variant -> variant.size().equals(selectedSize) && variant.color().equals(selectedColor))
+                .mapToInt(Variant::stock)
+                .findFirst().orElse(0);
+    }
 
     private long id;
     private String name;

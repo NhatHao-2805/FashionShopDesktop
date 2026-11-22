@@ -1,9 +1,14 @@
 package com.fashionshop.server.controller;
 
 import com.fashionshop.server.security.JwtAuthentication;
+import com.fashionshop.server.repository.VariantStockRepository;
 import com.fashionshop.server.service.InventoryService;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
+
+import java.sql.SQLException;
+import java.util.List;
 
 import static spark.Spark.get;
 import static spark.Spark.post;
@@ -13,6 +18,7 @@ public class InventoryController {
     private final InventoryService service;
 
     private final Gson gson;
+    private final VariantStockRepository variants = new VariantStockRepository();
 
     public InventoryController() {
 
@@ -24,6 +30,41 @@ public class InventoryController {
     }
 
     public void registerRoutes() {
+
+        String variantsPath = "/api/admin/inventory/:productId/variants";
+        get(variantsPath, (request, response) -> {
+            response.type("application/json; charset=UTF-8");
+            try {
+                return success("Đã tải tồn kho size/màu.",
+                        variants.get(Long.parseLong(request.params(":productId"))));
+            } catch (IllegalArgumentException e) {
+                response.status(400);
+                return error(e.getMessage());
+            } catch (SQLException e) {
+                response.status(500);
+                return error("Không thể tải tồn kho size/màu.");
+            }
+        });
+        post(variantsPath, (request, response) -> {
+            response.type("application/json; charset=UTF-8");
+            try {
+                var body = gson.fromJson(request.body(), AllocationRequest.class);
+                if (body == null) {
+                    throw new IllegalArgumentException("Dữ liệu phân bổ không hợp lệ.");
+                }
+                return success("Đã lưu phân bổ tồn kho.", variants.allocate(
+                        Long.parseLong(request.params(":productId")), body.expected(), body.allocations()));
+            } catch (JsonParseException e) {
+                response.status(400);
+                return error("Dữ liệu phân bổ không hợp lệ.");
+            } catch (IllegalArgumentException e) {
+                response.status(400);
+                return error(e.getMessage());
+            } catch (SQLException e) {
+                response.status(500);
+                return error("Không thể lưu phân bổ tồn kho.");
+            }
+        });
 
         get(
                 "/api/admin/inventory",
@@ -242,6 +283,9 @@ public class InventoryController {
 
         String reason;
     }
+
+    private record AllocationRequest(VariantStockRepository.Snapshot expected,
+                                     List<VariantStockRepository.Allocation> allocations) {}
 
     private static class ApiResponse {
 

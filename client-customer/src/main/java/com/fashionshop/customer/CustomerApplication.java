@@ -13,6 +13,9 @@ import com.fashionshop.customer.view.CustomerChatWindow;
 import com.fashionshop.customer.view.LoginWindow;
 import com.fashionshop.customer.view.MyOrdersWindow;
 import com.fashionshop.customer.view.ProductCard;
+import com.fashionshop.customer.view.OperationStatus;
+import com.fashionshop.customer.view.PageNavigation;
+import com.fashionshop.customer.view.PurchaseAccess;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -64,8 +67,7 @@ public class CustomerApplication extends Application {
     private final TextField searchField =
             new TextField();
 
-    private final Label statusLabel =
-            new Label("Đang tải dữ liệu...");
+    private final OperationStatus catalogStatus = new OperationStatus();
 
     private final Label userLabel =
             new Label();
@@ -93,7 +95,6 @@ private final Button cartButton =
     private final ComboBox<String> colorBox = new ComboBox<>();
     private boolean catalogLoaded;
     private boolean catalogLoading;
-    private Stage primaryStage;
 
     private boolean cartListenerRegistered =
             false;
@@ -103,8 +104,11 @@ private final Button cartButton =
             Stage stage
     ) {
 
-        this.primaryStage =
-                stage;
+        PageNavigation.initialize(stage);
+        stage.setMinWidth(1000);
+        stage.setMinHeight(680);
+        stage.setWidth(1320);
+        stage.setHeight(860);
 
         configureControls();
 
@@ -116,7 +120,7 @@ private final Button cartButton =
     }
 
     private void configureControls() {
-        com.fashionshop.customer.view.PurchaseAccess.setLoginHandler(this::requireCustomerLogin);
+        PurchaseAccess.setLoginHandler(this::openLogin);
 
         searchField.setPromptText(
                 "Tìm kiếm sản phẩm..."
@@ -144,11 +148,11 @@ private final Button cartButton =
                 event -> filterProducts()
         );
 
-        loginButton.setOnAction(event -> openLogin());
-        ordersButton.setOnAction(event -> { if (requireCustomerLogin()) MyOrdersWindow.show(); });
+        loginButton.setOnAction(event -> openLogin(() -> { }));
+        ordersButton.setOnAction(event -> PurchaseAccess.withCustomer(MyOrdersWindow::show));
         chatButton.setText("Chat với shop");
-        chatButton.setOnAction(event -> { if (requireCustomerLogin()) CustomerChatWindow.show(); });
-        cartButton.setOnAction(event -> { if (requireCustomerLogin()) CartWindow.show(); });
+        chatButton.setOnAction(event -> PurchaseAccess.withCustomer(CustomerChatWindow::show));
+        cartButton.setOnAction(event -> CartWindow.show());
         logoutButton.setOnAction(event -> logout());
         loginButton.getStyleClass().add("header-button");
         ordersButton.getStyleClass().add("header-button");
@@ -219,8 +223,7 @@ private final Button cartButton =
         filters.getStyleClass().add("filter-bar");
         HBox collectionTitle = new HBox(18, label("Sản phẩm", "section-title"), spacer(), search);
         collectionTitle.setAlignment(Pos.CENTER_LEFT);
-        statusLabel.getStyleClass().add("muted");
-        VBox content = new VBox(16, collectionTitle, filters, statusLabel, productFlowPane);
+        VBox content = new VBox(16, collectionTitle, filters, catalogStatus, productFlowPane);
         content.getStyleClass().add("store-content");
         content.setMaxWidth(1280);
         VBox wrapper = new VBox(content);
@@ -232,74 +235,21 @@ private final Button cartButton =
         root.setTop(header);
         Scene scene = new Scene(root, 1320, 860);
         scene.getStylesheets().add(getClass().getResource("/com/fashionshop/customer/shop.css").toExternalForm());
-        primaryStage.setTitle("Fashion Shop");
-        primaryStage.setMinWidth(1000);
-        primaryStage.setMinHeight(680);
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        PageNavigation.reset("Fashion Shop", scene);
         refreshAuthenticationUi();
     }
 
-    private void openLogin() {
-
-        LoginWindow loginWindow =
-                new LoginWindow();
-
-        boolean loginSuccess =
-                loginWindow.showAndWait();
-
-        if (!loginSuccess) {
-            return;
-        }
-
-        User user =
-                sessionManager.getCurrentUser();
-
-        if (user == null) {
-            return;
-        }
-
-        if ("ADMIN".equalsIgnoreCase(
-                user.getRole()
-        )) {
-
-            showAdminDashboard();
-
-            return;
-        }
-
-        refreshAuthenticationUi();
-    }
-
-    private boolean requireCustomerLogin() {
-
-        User user =
-                sessionManager.getCurrentUser();
-
-        if (user == null) {
-
-            openLogin();
-
-            user =
-                    sessionManager.getCurrentUser();
-        }
-
-        if (user == null) {
-            return false;
-        }
-
-        if ("ADMIN".equalsIgnoreCase(
-                user.getRole()
-        )) {
-
-            showAdminDashboard();
-
-            return false;
-        }
-
-        return "CUSTOMER".equalsIgnoreCase(
-                user.getRole()
-        );
+    private void openLogin(Runnable customerAction) {
+        new LoginWindow().show(() -> {
+            if (sessionManager.isLoggedIn() && "ADMIN".equalsIgnoreCase(sessionManager.getCurrentUser().getRole())) {
+                showAdminDashboard();
+            } else {
+                refreshAuthenticationUi();
+                if (sessionManager.isCustomer()) {
+                    customerAction.run();
+                }
+            }
+        });
     }
 
     private void refreshAuthenticationUi() {
@@ -374,17 +324,12 @@ cartButton.setVisible(true);
         cartService.clear();
 
         refreshAuthenticationUi();
-
-        statusLabel.setText(
-                "Bạn đã đăng xuất. Bạn vẫn có thể xem sản phẩm."
-        );
     }
 
     private void showAdminDashboard() {
 
         AdminDashboardWindow dashboard =
                 new AdminDashboardWindow(
-                        primaryStage,
                         () -> {
 
                             sessionManager.logout();
@@ -424,9 +369,7 @@ cartButton.setVisible(true);
         catalogLoaded = false;
         productFlowPane.getChildren().clear();
 
-        statusLabel.setText(
-                "Đang tải dữ liệu..."
-        );
+        catalogStatus.loading("Đang tải danh mục sản phẩm…");
 
         Task<Void> task =
                 new Task<>() {
@@ -473,16 +416,8 @@ cartButton.setVisible(true);
 
                     catalogLoading = false;
                     catalogLoaded = false;
-                    statusLabel.setText("Không thể tải sản phẩm từ "
-                            + com.fashionshop.customer.config.ServerConfig.getBaseUrl());
-                    Button retry = new Button("Thử tải lại");
-                    retry.getStyleClass().add("primary-button");
-                    retry.setOnAction(e -> loadData());
-                    VBox error = new VBox(12,
-                            label("Chưa kết nối được cửa hàng", "section-title"),
-                            label("Hãy bật MySQL trong XAMPP và chạy server, sau đó nhấn Thử tải lại.", "muted"), retry);
-                    error.getStyleClass().add("empty-state");
-                    productFlowPane.getChildren().setAll(error);
+                    catalogStatus.error("Không tải được danh mục sản phẩm. Kiểm tra kết nối với máy chủ cửa hàng.",
+                            this::loadData);
 
                     if (task.getException()
                             != null) {
@@ -612,16 +547,12 @@ cartButton.setVisible(true);
         }
 
         if (products.isEmpty()) {
-            VBox empty = new VBox(10, label("Chưa tìm thấy sản phẩm phù hợp", "section-title"),
-                    label("Thử từ khóa khác hoặc xóa bộ lọc để xem thêm sản phẩm.", "muted"));
-            empty.getStyleClass().add("empty-state");
-            productFlowPane.getChildren().add(empty);
+            catalogStatus.empty(allProducts.isEmpty()
+                    ? "Cửa hàng chưa có sản phẩm."
+                    : "Không có sản phẩm phù hợp. Hãy đổi từ khóa hoặc xóa bộ lọc.");
+        } else {
+            catalogStatus.info("Đang hiển thị " + products.size() + " sản phẩm.");
         }
-        statusLabel.setText(
-                "Đang hiển thị "
-                        + products.size()
-                        + " sản phẩm."
-        );
     }
 
     private void updateCartButtonText() {

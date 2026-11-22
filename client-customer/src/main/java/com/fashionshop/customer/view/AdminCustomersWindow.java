@@ -10,7 +10,6 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 import java.util.List;
 
@@ -33,19 +32,6 @@ public class AdminCustomersWindow {
 
     private void open() {
 
-        Stage stage =
-                new Stage();
-
-        Label title =
-                new Label(
-                        "QUẢN LÝ KHÁCH HÀNG"
-                );
-
-        title.setStyle(
-                "-fx-font-size: 24px;"
-                        + "-fx-font-weight: bold;"
-        );
-
         Button refresh =
                 new Button(
                         "Làm mới"
@@ -60,7 +46,6 @@ public class AdminCustomersWindow {
         VBox root =
                 new VBox(
                         15,
-                        title,
                         refresh,
                         table,
                         statusLabel
@@ -82,15 +67,7 @@ public class AdminCustomersWindow {
                         600
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Khách hàng"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.show();
+        PageNavigation.show("Khách hàng", scene);
 
         loadCustomers();
     }

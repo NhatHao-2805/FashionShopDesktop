@@ -18,7 +18,14 @@ public class AuthService {
             String email,
             String password
     ) throws Exception {
+        return login(email, password, false);
+    }
 
+    public User loginAdmin(String email, String password) throws Exception {
+        return login(email, password, true);
+    }
+
+    private User login(String email, String password, boolean adminOnly) throws Exception {
         LoginRequest request =
                 new LoginRequest();
 
@@ -62,6 +69,10 @@ public class AuthService {
             throw new IllegalStateException(
                     "Dữ liệu đăng nhập không hợp lệ."
             );
+        }
+
+        if (adminOnly && !"ADMIN".equalsIgnoreCase(response.data.user.getRole())) {
+            throw new IllegalArgumentException("Vui lòng đăng nhập bằng tài khoản quản trị viên.");
         }
 
         SessionManager.getInstance()

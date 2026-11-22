@@ -2,7 +2,6 @@ package com.fashionshop.customer.view;
 
 import com.fashionshop.customer.service.AdminService;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -13,7 +12,6 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -32,11 +30,9 @@ public class AdminOrdersWindow {
     private final ComboBox<String> statusFilter =
             new ComboBox<>();
 
-    private final Label statusLabel =
-            new Label();
-
-    private final ProgressIndicator progress =
-            new ProgressIndicator();
+    private final OperationStatus status = new OperationStatus();
+    private boolean updatingOrder;
+    private boolean ordersLoaded;
 
     private final NumberFormat currency =
             NumberFormat.getCurrencyInstance(
@@ -56,19 +52,6 @@ public class AdminOrdersWindow {
     }
 
     private void open() {
-
-        Stage stage =
-                new Stage();
-
-        Label title =
-                new Label(
-                        "QUẢN LÝ ĐƠN HÀNG"
-                );
-
-        title.setStyle(
-                "-fx-font-size: 24px;"
-                        + "-fx-font-weight: bold;"
-        );
 
         statusFilter.getItems()
                 .addAll(
@@ -93,6 +76,9 @@ public class AdminOrdersWindow {
                         "Làm mới"
                 );
 
+        refresh.disableProperty().bind(status.busyProperty());
+        statusFilter.disableProperty().bind(status.busyProperty());
+        table.disableProperty().bind(status.busyProperty());
         refresh.setOnAction(
                 event -> loadOrders()
         );
@@ -113,37 +99,12 @@ public class AdminOrdersWindow {
 
         configureTable();
 
-        progress.setPrefSize(
-                22,
-                22
-        );
-
-        progress.setVisible(
-                false
-        );
-
-        progress.setManaged(
-                false
-        );
-
-        HBox bottom =
-                new HBox(
-                        10,
-                        progress,
-                        statusLabel
-                );
-
-        bottom.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
         VBox root =
                 new VBox(
                         15,
-                        title,
                         filters,
-                        table,
-                        bottom
+                        status,
+                        table
                 );
 
         root.setPadding(
@@ -162,15 +123,8 @@ public class AdminOrdersWindow {
                         680
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Quản lý đơn hàng"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.show();
+        PageNavigation.show("Quản lý đơn hàng", scene);
+        PageNavigation.guardBack(scene, () -> !updatingOrder);
 
         loadOrders();
     }
@@ -335,7 +289,7 @@ public class AdminOrdersWindow {
 
                             {
                                 actionButton.setStyle(
-                                        "-fx-background-color: #2563eb;"
+                                        "-fx-background-color: #294b61;"
                                                 + "-fx-text-fill: white;"
                                                 + "-fx-font-weight: bold;"
                                 );
@@ -427,19 +381,18 @@ public class AdminOrdersWindow {
                 TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN
         );
 
-        table.setPlaceholder(
-                new Label(
-                        "Chưa có đơn hàng."
-                )
-        );
+        table.setPlaceholder(new Label());
     }
 
     private void loadOrders() {
+        loadOrders(null);
+    }
 
-        setLoading(
-                true,
-                "Đang tải danh sách đơn hàng..."
-        );
+    private void loadOrders(String updatedOrder) {
+        if (status.isBusy()) return;
+        var position = TablePosition.capture(table, AdminService.AdminOrder::getId);
+        ordersLoaded = false;
+        status.loading("Đang tải danh sách đơn hàng…");
 
         Task<List<AdminService.AdminOrder>> task =
                 new Task<>() {
@@ -461,32 +414,21 @@ public class AdminOrdersWindow {
                                     task.getValue()
                             );
 
+                    ordersLoaded = true;
+                    status.info("");
                     applyFilter();
-
-                    setLoading(
-                            false,
-                            "Đã tải "
-                                    + allOrders.size()
-                                    + " đơn hàng."
-                    );
+                    position.restore(table, AdminService.AdminOrder::getId);
+                    if (updatedOrder != null) status.success(updatedOrder);
                 }
         );
 
-        task.setOnFailed(
-                event -> {
-
-                    table.getItems()
-                            .clear();
-
-                    setLoading(
-                            false,
-                            "Không thể tải đơn hàng: "
-                                    + errorMessage(
-                                    task.getException()
-                            )
-                    );
-                }
-        );
+        task.setOnFailed(event -> {
+            allOrders.clear();
+            table.getItems().clear();
+            String prefix = updatedOrder == null ? "" : updatedOrder + " ";
+            status.error(prefix + "Không tải được danh sách đơn hàng: "
+                    + errorMessage(task.getException()), () -> loadOrders(updatedOrder));
+        });
 
         Thread thread =
                 new Thread(task);
@@ -522,6 +464,14 @@ public class AdminOrdersWindow {
                         result
                 )
         );
+        if (ordersLoaded && !status.isBusy()) {
+            if (result.isEmpty()) {
+                status.empty(allOrders.isEmpty() ? "Chưa có đơn hàng trong cửa hàng."
+                        : "Không có đơn hàng ở trạng thái đã chọn.");
+            } else {
+                status.info("Đang hiển thị " + result.size() + " đơn hàng.");
+            }
+        }
     }
 
     private void advanceOrder(
@@ -584,12 +534,9 @@ public class AdminOrdersWindow {
             String nextStatus
     ) {
 
-        setLoading(
-                true,
-                "Đang cập nhật đơn hàng #"
-                        + orderId
-                        + "..."
-        );
+        if (status.isBusy()) return;
+        updatingOrder = true;
+        status.loading("Đang cập nhật đơn hàng #" + orderId + "… Vui lòng chờ xác nhận.");
 
         Task<AdminService.AdminOrder> task =
                 new Task<>() {
@@ -606,53 +553,21 @@ public class AdminOrdersWindow {
                     }
                 };
 
-        task.setOnSucceeded(
-                event -> {
+        task.setOnSucceeded(event -> {
+            updatingOrder = false;
+            status.info("");
+            loadOrders("Đã cập nhật đơn hàng #" + orderId + ".");
+        });
 
-                    setLoading(
-                            false,
-                            "Cập nhật đơn hàng #"
-                                    + orderId
-                                    + " thành công."
-                    );
-
-                    loadOrders();
-                }
-        );
-
-        task.setOnFailed(
-                event -> {
-
-                    setLoading(
-                            false,
-                            "Không thể cập nhật: "
-                                    + errorMessage(
-                                    task.getException()
-                            )
-                    );
-
-                    Alert alert =
-                            new Alert(
-                                    Alert.AlertType.ERROR
-                            );
-
-                    alert.setTitle(
-                            "Lỗi cập nhật"
-                    );
-
-                    alert.setHeaderText(
-                            null
-                    );
-
-                    alert.setContentText(
-                            errorMessage(
-                                    task.getException()
-                            )
-                    );
-
-                    alert.showAndWait();
-                }
-        );
+        task.setOnFailed(event -> {
+            updatingOrder = false;
+            ordersLoaded = false;
+            allOrders.clear();
+            table.getItems().clear();
+            status.error("Không xác nhận được cập nhật đơn #" + orderId
+                    + ". Hãy tải lại danh sách để kiểm tra trạng thái. "
+                    + errorMessage(task.getException()), this::loadOrders);
+        });
 
         Thread thread =
                 new Thread(task);
@@ -746,29 +661,6 @@ public class AdminOrdersWindow {
             default ->
                     status;
         };
-    }
-
-    private void setLoading(
-            boolean loading,
-            String message
-    ) {
-
-        Platform.runLater(
-                () -> {
-
-                    progress.setVisible(
-                            loading
-                    );
-
-                    progress.setManaged(
-                            loading
-                    );
-
-                    statusLabel.setText(
-                            message
-                    );
-                }
-        );
     }
 
     private String errorMessage(

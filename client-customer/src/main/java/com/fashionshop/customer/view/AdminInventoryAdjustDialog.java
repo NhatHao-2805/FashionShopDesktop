@@ -2,7 +2,6 @@ package com.fashionshop.customer.view;
 
 import com.fashionshop.customer.service.InventoryService;
 
-import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -10,8 +9,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 public class AdminInventoryAdjustDialog {
 
@@ -22,8 +19,6 @@ public class AdminInventoryAdjustDialog {
 
     private final Runnable onSuccess;
 
-    private final Stage stage =
-            new Stage();
 
     private final ComboBox<TransactionType> typeBox =
             new ComboBox<>();
@@ -41,11 +36,7 @@ public class AdminInventoryAdjustDialog {
     private final Label previewLabel =
             new Label();
 
-    private final Label messageLabel =
-            new Label();
-
-    private final ProgressIndicator progress =
-            new ProgressIndicator();
+    private final OperationStatus status = new OperationStatus();
 
     private final Button saveButton =
             new Button(
@@ -64,21 +55,7 @@ public class AdminInventoryAdjustDialog {
                 onSuccess;
     }
 
-    public void showAndWait() {
-
-        stage.initModality(
-                Modality.APPLICATION_MODAL
-        );
-
-        Label title =
-                new Label(
-                        "ĐIỀU CHỈNH KHO"
-                );
-
-        title.setStyle(
-                "-fx-font-size: 23px;"
-                        + "-fx-font-weight: bold;"
-        );
+    public void show() {
 
         Label product =
                 new Label(
@@ -141,8 +118,8 @@ public class AdminInventoryAdjustDialog {
         );
 
         previewLabel.setStyle(
-                "-fx-background-color: #eff6ff;"
-                        + "-fx-text-fill: #1d4ed8;"
+                "-fx-background-color: #e3edf4;"
+                        + "-fx-text-fill: #294b61;"
                         + "-fx-font-weight: bold;"
                         + "-fx-padding: 10;"
                         + "-fx-background-radius: 8;"
@@ -204,7 +181,7 @@ public class AdminInventoryAdjustDialog {
         );
 
         saveButton.setStyle(
-                "-fx-background-color: #2563eb;"
+                "-fx-background-color: #294b61;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 8;"
@@ -220,44 +197,26 @@ public class AdminInventoryAdjustDialog {
                 );
 
         cancel.setOnAction(
-                event -> stage.close()
+                event -> PageNavigation.back(saveButton.getScene())
         );
-
-        progress.setPrefSize(
-                22,
-                22
-        );
-
-        progress.setVisible(
-                false
-        );
-
-        progress.setManaged(
-                false
-        );
+        cancel.disableProperty().bind(saveButton.disableProperty());
 
         HBox buttons =
                 new HBox(
                         10,
                         saveButton,
-                        cancel,
-                        progress
+                        cancel
                 );
-
-        messageLabel.setWrapText(
-                true
-        );
 
         VBox root =
                 new VBox(
                         14,
-                        title,
                         product,
                         new Separator(),
                         form,
                         previewLabel,
                         buttons,
-                        messageLabel
+                        status
                 );
 
         root.setPadding(
@@ -271,19 +230,8 @@ public class AdminInventoryAdjustDialog {
                         480
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Điều chỉnh kho"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.setResizable(
-                false
-        );
-
-        stage.showAndWait();
+        PageNavigation.show("Điều chỉnh kho", scene);
+        PageNavigation.guardBack(scene, () -> !saveButton.isDisabled());
     }
 
     private void updatePreview() {
@@ -320,8 +268,8 @@ public class AdminInventoryAdjustDialog {
         } else {
 
             previewLabel.setStyle(
-                    "-fx-background-color: #eff6ff;"
-                            + "-fx-text-fill: #1d4ed8;"
+                    "-fx-background-color: #e3edf4;"
+                            + "-fx-text-fill: #294b61;"
                             + "-fx-font-weight: bold;"
                             + "-fx-padding: 10;"
                             + "-fx-background-radius: 8;"
@@ -431,12 +379,10 @@ public class AdminInventoryAdjustDialog {
 
                     success.showAndWait();
 
+                    PageNavigation.back(saveButton.getScene());
                     if (onSuccess != null) {
-
                         onSuccess.run();
                     }
-
-                    stage.close();
                 }
         );
 
@@ -468,57 +414,20 @@ public class AdminInventoryAdjustDialog {
         thread.start();
     }
 
-    private void setLoading(
-            boolean loading
-    ) {
-
-        Platform.runLater(
-                () -> {
-
-                    saveButton.setDisable(
-                            loading
-                    );
-
-                    typeBox.setDisable(
-                            loading
-                    );
-
-                    quantitySpinner.setDisable(
-                            loading
-                    );
-
-                    reasonArea.setDisable(
-                            loading
-                    );
-
-                    progress.setVisible(
-                            loading
-                    );
-
-                    progress.setManaged(
-                            loading
-                    );
-
-                    messageLabel.setText(
-                            loading
-                                    ? "Đang cập nhật kho..."
-                                    : ""
-                    );
-                }
-        );
+    private void setLoading(boolean loading) {
+        saveButton.setDisable(loading);
+        typeBox.setDisable(loading);
+        quantitySpinner.setDisable(loading);
+        reasonArea.setDisable(loading);
+        if (loading) {
+            status.loading("Đang cập nhật kho… Nút xác nhận tạm khóa đến khi có phản hồi.");
+        } else {
+            status.info("");
+        }
     }
 
-    private void showError(
-            String message
-    ) {
-
-        messageLabel.setStyle(
-                "-fx-text-fill: #dc2626;"
-        );
-
-        messageLabel.setText(
-                message
-        );
+    private void showError(String message) {
+        status.error(message == null ? "Không thể cập nhật kho." : message, null);
     }
 
     private enum TransactionType {

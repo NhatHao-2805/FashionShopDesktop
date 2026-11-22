@@ -10,15 +10,12 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.Locale;
 
 public class AdminDashboardWindow {
-
-    private final Stage stage;
 
     private final Runnable logoutAction;
 
@@ -42,13 +39,7 @@ public class AdminDashboardWindow {
                     )
             );
 
-    public AdminDashboardWindow(
-            Stage stage,
-            Runnable logoutAction
-    ) {
-
-        this.stage =
-                stage;
+    public AdminDashboardWindow(Runnable logoutAction) {
 
         this.logoutAction =
                 logoutAction;
@@ -60,7 +51,7 @@ public class AdminDashboardWindow {
                 new BorderPane();
 
         root.setStyle(
-                "-fx-background-color: #f9f8f5;"
+                "-fx-background-color: #dce6ee;"
         );
 
         root.setLeft(
@@ -82,15 +73,7 @@ public class AdminDashboardWindow {
                         820
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Admin Dashboard"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.show();
+        PageNavigation.reset("Quản trị Fashion Shop", scene);
 
         loadDashboard();
     }
@@ -114,7 +97,7 @@ public class AdminDashboardWindow {
                 );
 
         role.setStyle(
-                "-fx-text-fill: #becdc0;"
+                "-fx-text-fill: #d6e4ee;"
                         + "-fx-font-weight: bold;"
         );
 
@@ -126,6 +109,7 @@ public class AdminDashboardWindow {
         dashboardButton.setStyle(
                 activeStyle()
         );
+        dashboardButton.setOnAction(event -> loadDashboard());
 
         Button ordersButton =
                 menuButton(
@@ -152,11 +136,6 @@ public class AdminDashboardWindow {
                 );
 
 
-        Button reportsButton =
-                menuButton(
-                        "Thống kê"
-                );
-
         ordersButton.setOnAction(
                 event -> AdminOrdersWindow.show()
         );
@@ -176,13 +155,6 @@ public class AdminDashboardWindow {
                 event -> AdminChatWindow.show()
         );
 
-
-        reportsButton.setOnAction(
-                event ->
-                        comingSoon(
-                                "Thống kê"
-                        )
-        );
 
         Region spacer =
                 new Region();
@@ -246,7 +218,6 @@ public class AdminDashboardWindow {
                         customersButton,
                         inventoryButton,
                         chatButton,
-                        reportsButton,
                         spacer,
                         logoutButton
                 );
@@ -260,7 +231,7 @@ public class AdminDashboardWindow {
         );
 
         sidebar.setStyle(
-                "-fx-background-color: #25382e;"
+                "-fx-background-color: #314a5d;"
         );
 
         return sidebar;
@@ -273,10 +244,7 @@ public class AdminDashboardWindow {
                         "Tổng quan hệ thống"
                 );
 
-        title.setStyle(
-                "-fx-font-size: 22px;"
-                        + "-fx-font-weight: bold;"
-        );
+        title.getStyleClass().add("admin-page-title");
 
         Region spacer =
                 new Region();
@@ -311,7 +279,7 @@ public class AdminDashboardWindow {
                 );
 
         refresh.setStyle(
-                "-fx-background-color: #345348;"
+                "-fx-background-color: #294b61;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
         );
@@ -338,32 +306,13 @@ public class AdminDashboardWindow {
         );
 
         bar.setStyle(
-                "-fx-background-color: white;"
+                "-fx-background-color: #edf3f7;"
         );
 
         return bar;
     }
 
     private VBox createDashboardContent() {
-
-        Label title =
-                new Label(
-                        "Dashboard"
-                );
-
-        title.setStyle(
-                "-fx-font-size: 28px;"
-                        + "-fx-font-weight: bold;"
-        );
-
-        Label subtitle =
-                new Label(
-                        "Theo dõi hoạt động của Fashion Shop."
-                );
-
-        subtitle.setStyle(
-                "-fx-text-fill: #6b7280;"
-        );
 
         statsGrid.setHgap(
                 16
@@ -400,9 +349,6 @@ public class AdminDashboardWindow {
         VBox content =
                 new VBox(
                         10,
-                        title,
-                        subtitle,
-                        new Separator(),
                         statsGrid,
                         statusBox
                 );
@@ -629,7 +575,7 @@ public class AdminDashboardWindow {
                 );
 
         titleLabel.setStyle(
-                "-fx-text-fill: #6b7280;"
+                "-fx-text-fill: #41596c;"
                         + "-fx-font-weight: bold;"
         );
 
@@ -668,9 +614,9 @@ public class AdminDashboardWindow {
         );
 
         card.setStyle(
-                "-fx-background-color: white;"
+                "-fx-background-color: #edf3f7;"
                         + "-fx-background-radius: 12;"
-                        + "-fx-border-color: #e5e7eb;"
+                        + "-fx-border-color: #adbfce;"
                         + "-fx-border-radius: 12;"
         );
 
@@ -704,7 +650,7 @@ public class AdminDashboardWindow {
 
         button.setStyle(
                 "-fx-background-color: transparent;"
-                        + "-fx-text-fill: #e3e9e1;"
+                        + "-fx-text-fill: #e9f2f8;"
                         + "-fx-font-weight: bold;"
         );
 
@@ -713,7 +659,7 @@ public class AdminDashboardWindow {
 
     private String activeStyle() {
 
-        return "-fx-background-color: #345348;"
+        return "-fx-background-color: #294b61;"
                 + "-fx-text-fill: white;"
                 + "-fx-font-weight: bold;"
                 + "-fx-background-radius: 8;";
@@ -753,27 +699,4 @@ public class AdminDashboardWindow {
         return throwable.getMessage();
     }
 
-    private void comingSoon(
-            String feature
-    ) {
-
-        Alert alert =
-                new Alert(
-                        Alert.AlertType.INFORMATION
-                );
-
-        alert.setTitle(
-                "Fashion Shop Admin"
-        );
-
-        alert.setHeaderText(
-                feature
-        );
-
-        alert.setContentText(
-                "Chức năng này sẽ được hoàn thiện ở batch tiếp theo."
-        );
-
-        alert.showAndWait();
-    }
 }

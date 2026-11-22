@@ -6,7 +6,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
-import java.util.Collections;
 import java.util.List;
 
 public class CategoryService {
@@ -45,10 +44,10 @@ public class CategoryService {
 
         } catch (Exception e) {
 
-            e.printStackTrace();
+            throw new IllegalStateException("Không tải được danh mục sản phẩm.", e);
         }
 
-        return Collections.emptyList();
+        throw new IllegalStateException("Máy chủ không trả về danh mục sản phẩm hợp lệ.");
     }
 
     private static class ApiResponse<T> {

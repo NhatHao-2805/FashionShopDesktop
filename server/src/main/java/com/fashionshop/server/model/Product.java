@@ -3,6 +3,13 @@ package com.fashionshop.server.model;
 import java.math.BigDecimal;
 
 public class Product {
+    public record Variant(String size, String color, int stock) {}
+
+    private java.util.List<Variant> variants;
+
+    public void setVariants(java.util.List<Variant> variants) {
+        this.variants = variants;
+    }
 
     private long id;
     private String name;

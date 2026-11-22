@@ -14,7 +14,6 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -63,27 +62,13 @@ public class AdminProductsWindow {
 
     private void open() {
 
-        Stage stage =
-                new Stage();
-
-        Label title =
-                new Label(
-                        "QUẢN LÝ SẢN PHẨM"
-                );
-
-        title.setStyle(
-                "-fx-font-size: 26px;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #111827;"
-        );
-
         Label description =
                 new Label(
                         "Quản lý thông tin, giá bán và trạng thái sản phẩm."
                 );
 
         description.setStyle(
-                "-fx-text-fill: #6b7280;"
+                "-fx-text-fill: #41596c;"
         );
 
         searchField.setPromptText(
@@ -149,7 +134,7 @@ public class AdminProductsWindow {
         );
 
         refreshButton.setStyle(
-                "-fx-background-color: #2563eb;"
+                "-fx-background-color: #294b61;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 8;"
@@ -211,7 +196,6 @@ public class AdminProductsWindow {
         VBox root =
                 new VBox(
                         8,
-                        title,
                         description,
                         new Separator(),
                         toolbar,
@@ -224,7 +208,7 @@ public class AdminProductsWindow {
         );
 
         root.setStyle(
-                "-fx-background-color: #f9fafb;"
+                "-fx-background-color: #dce6ee;"
         );
 
         VBox.setVgrow(
@@ -239,15 +223,7 @@ public class AdminProductsWindow {
                         720
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Quản lý sản phẩm"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.show();
+        PageNavigation.show("Quản lý sản phẩm", scene);
 
         loadProducts();
     }
@@ -530,7 +506,7 @@ public class AdminProductsWindow {
                                 );
 
                                 editButton.setStyle(
-                                        "-fx-background-color: #2563eb;"
+                                        "-fx-background-color: #294b61;"
                                                 + "-fx-text-fill: white;"
                                                 + "-fx-font-weight: bold;"
                                 );
@@ -542,14 +518,8 @@ public class AdminProductsWindow {
                                                     currentProduct();
 
                                             if (product != null) {
-
-                                                AdminProductFormWindow
-                                                        .showEdit(
-                                                                product,
-                                                                AdminProductsWindow
-                                                                        .this
-                                                                        ::loadProducts
-                                                        );
+                                                var position = TablePosition.capture(table, Product::getId);
+                                                AdminProductFormWindow.showEdit(product, () -> loadProducts(position));
                                             }
                                         }
                                 );
@@ -674,6 +644,10 @@ public class AdminProductsWindow {
     }
 
     private void loadProducts() {
+        loadProducts(TablePosition.capture(table, Product::getId));
+    }
+
+    private void loadProducts(TablePosition position) {
 
         setLoading(
                 true,
@@ -701,6 +675,7 @@ public class AdminProductsWindow {
                             );
 
                     applyFilter();
+                    position.restore(table, Product::getId);
 
                     setLoading(
                             false,

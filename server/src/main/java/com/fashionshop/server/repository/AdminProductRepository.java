@@ -263,7 +263,6 @@ public class AdminProductRepository {
                     image_path = ?,
                     size = ?,
                     color = ?,
-                    stock = ?,
                     status = ?
                 WHERE id = ?
                 """;
@@ -275,6 +274,16 @@ public class AdminProductRepository {
                 PreparedStatement statement =
                         connection.prepareStatement(sql)
         ) {
+
+            connection.setAutoCommit(false);
+            var current = VariantStockRepository.readLocked(connection, product.getId());
+            var sizes = VariantStockRepository.options(product.getSize());
+            var colors = VariantStockRepository.options(product.getColor());
+            if (current.variants().stream().anyMatch(
+                    variant -> !sizes.contains(variant.size()) || !colors.contains(variant.color()))) {
+                connection.rollback();
+                throw new IllegalArgumentException("Không thể xóa size/màu đã được quản lý trong kho.");
+            }
 
             if (product.getCategoryId() > 0) {
 
@@ -321,23 +330,20 @@ public class AdminProductRepository {
                     product.getColor()
             );
 
-            statement.setInt(
-                    8,
-                    product.getStock()
-            );
-
             statement.setString(
-                    9,
+                    8,
                     product.getStatus()
             );
 
             statement.setLong(
-                    10,
+                    9,
                     product.getId()
             );
 
             int changed =
                     statement.executeUpdate();
+
+            connection.commit();
 
             if (changed != 1) {
 

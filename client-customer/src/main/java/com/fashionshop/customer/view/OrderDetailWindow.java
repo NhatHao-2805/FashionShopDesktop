@@ -8,9 +8,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -28,11 +27,8 @@ public class OrderDetailWindow {
     private final VBox contentBox =
             new VBox(10);
 
-    private final Label statusLabel =
-            new Label();
-
-    private final ProgressIndicator progressIndicator =
-            new ProgressIndicator();
+    private final OperationStatus status = new OperationStatus();
+    private boolean cancelling;
 
     private final NumberFormat currency =
             NumberFormat.getCurrencyInstance(
@@ -42,7 +38,6 @@ public class OrderDetailWindow {
                     )
             );
 
-    private Stage stage;
 
     private OrderService.OrderResult currentOrder;
 
@@ -71,13 +66,6 @@ public class OrderDetailWindow {
 
     private void open() {
 
-        stage =
-                new Stage();
-
-        stage.initModality(
-                Modality.APPLICATION_MODAL
-        );
-
         Label titleLabel =
                 new Label(
                         "CHI TIẾT ĐƠN HÀNG #"
@@ -102,31 +90,18 @@ public class OrderDetailWindow {
                 );
 
         closeButton.setOnAction(
-                event -> stage.close()
+                event -> PageNavigation.back(closeButton.getScene())
         );
 
-        progressIndicator.setPrefSize(
-                24,
-                24
-        );
-
-        HBox statusBox =
-                new HBox(
-                        10,
-                        progressIndicator,
-                        statusLabel
-                );
-
-        statusBox.setAlignment(
-                Pos.CENTER_LEFT
-        );
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        closeButton.disableProperty().bind(status.busyProperty());
 
         VBox root =
                 new VBox(
                         15,
                         titleLabel,
+                        status,
                         scrollPane,
-                        statusBox,
                         closeButton
                 );
 
@@ -141,25 +116,18 @@ public class OrderDetailWindow {
                         650
                 );
 
-        stage.setTitle(
-                "Chi tiết đơn hàng #"
-                        + orderId
-        );
-
         scene.getStylesheets().add(OrderDetailWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
 
-        stage.setScene(scene);
-        stage.show();
+        PageNavigation.show("Chi tiết đơn hàng", scene);
+        PageNavigation.guardBack(scene, () -> !cancelling);
 
         loadOrder();
     }
 
     private void loadOrder() {
 
-        setLoading(
-                true,
-                "Đang tải chi tiết đơn hàng..."
-        );
+        if (status.isBusy()) return;
+        status.loading("Đang tải chi tiết đơn hàng…");
 
         Task<OrderService.OrderResult> task =
                 new Task<>() {
@@ -180,10 +148,7 @@ public class OrderDetailWindow {
             currentOrder =
                     task.getValue();
 
-            setLoading(
-                    false,
-                    ""
-            );
+            status.info("");
 
             displayOrder(
                     currentOrder
@@ -191,18 +156,8 @@ public class OrderDetailWindow {
         });
 
         task.setOnFailed(event -> {
-
-            setLoading(
-                    false,
-                    "Không thể tải chi tiết: "
-                            + getErrorMessage(
-                            task.getException()
-                    )
-            );
-
-            contentBox
-                    .getChildren()
-                    .clear();
+            contentBox.getChildren().clear();
+            status.error("Không tải được chi tiết đơn: " + getErrorMessage(task.getException()), this::loadOrder);
         });
 
         Thread thread =
@@ -222,9 +177,7 @@ public class OrderDetailWindow {
 
         if (order == null) {
 
-            statusLabel.setText(
-                    "Không tìm thấy đơn hàng."
-            );
+            this.status.empty("Không tìm thấy đơn hàng.");
 
             return;
         }
@@ -375,6 +328,7 @@ public class OrderDetailWindow {
                             + "-fx-font-weight: bold;"
             );
 
+            cancelButton.disableProperty().bind(this.status.busyProperty());
             cancelButton.setOnAction(
                     event ->
                             confirmCancel()
@@ -493,10 +447,9 @@ public class OrderDetailWindow {
 
     private void cancelOrder() {
 
-        setLoading(
-                true,
-                "Đang hủy đơn hàng..."
-        );
+        if (status.isBusy()) return;
+        cancelling = true;
+        status.loading("Đang hủy đơn hàng… Vui lòng chờ xác nhận.");
 
         Task<OrderService.OrderResult> task =
                 new Task<>() {
@@ -513,76 +466,21 @@ public class OrderDetailWindow {
                 };
 
         task.setOnSucceeded(event -> {
-
-            currentOrder =
-                    task.getValue();
-
-            setLoading(
-                    false,
-                    "Hủy đơn hàng thành công."
-            );
-
-            displayOrder(
-                    currentOrder
-            );
-
-            Alert alert =
-                    new Alert(
-                            Alert.AlertType.INFORMATION
-                    );
-
-            alert.setTitle(
-                    "Thành công"
-            );
-
-            alert.setHeaderText(
-                    null
-            );
-
-            alert.setContentText(
-                    "Đơn hàng #"
-                            + orderId
-                            + " đã được hủy."
-            );
-
-            alert.showAndWait();
-
-            if (onChanged != null) {
-
-                onChanged.run();
-            }
+            cancelling = false;
+            currentOrder = task.getValue();
+            displayOrder(currentOrder);
+            status.success("Đã hủy đơn hàng #" + orderId + ".");
+            if (onChanged != null) onChanged.run();
         });
 
         task.setOnFailed(event -> {
-
-            setLoading(
-                    false,
-                    "Không thể hủy đơn: "
-                            + getErrorMessage(
-                            task.getException()
-                    )
-            );
-
-            Alert alert =
-                    new Alert(
-                            Alert.AlertType.ERROR
-                    );
-
-            alert.setTitle(
-                    "Không thể hủy đơn"
-            );
-
-            alert.setHeaderText(
-                    null
-            );
-
-            alert.setContentText(
-                    getErrorMessage(
-                            task.getException()
-                    )
-            );
-
-            alert.showAndWait();
+            cancelling = false;
+            contentBox.getChildren().clear();
+            status.error("Không xác nhận được việc hủy đơn. Hãy tải lại để kiểm tra trạng thái. "
+                    + getErrorMessage(task.getException()), () -> {
+                if (onChanged != null) onChanged.run();
+                loadOrder();
+            });
         });
 
         Thread thread =
@@ -590,24 +488,6 @@ public class OrderDetailWindow {
 
         thread.setDaemon(true);
         thread.start();
-    }
-
-    private void setLoading(
-            boolean loading,
-            String message
-    ) {
-
-        progressIndicator.setVisible(
-                loading
-        );
-
-        progressIndicator.setManaged(
-                loading
-        );
-
-        statusLabel.setText(
-                message
-        );
     }
 
     private String formatMoney(

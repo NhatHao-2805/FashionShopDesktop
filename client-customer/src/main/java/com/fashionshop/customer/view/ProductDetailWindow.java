@@ -11,13 +11,13 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -27,9 +27,6 @@ public class ProductDetailWindow {
     public static void show(
             Product product
     ) {
-
-        Stage stage =
-                new Stage();
 
         ImageView imageView =
                 new ImageView();
@@ -156,10 +153,24 @@ public class ProductDetailWindow {
                         + "-fx-cursor: hand;"
         );
 
-        addToCartButton.setDisable(product.getStock() <= 0);
-        if (product.getStock() <= 0) addToCartButton.setText("Tạm hết hàng");
-        addToCartButton.setOnAction(event -> {
-            if (!PurchaseAccess.requireCustomer()) return;
+        Runnable refreshStock = () -> {
+            String size = sizeChoice.getValue(), color = colorChoice.getValue();
+            boolean selected = (size != null || sizeChoice.getItems().isEmpty())
+                    && (color != null || colorChoice.getItems().isEmpty());
+            int available = product.availableStock(size, color);
+            boolean canBuy = selected && available > 0;
+            stockLabel.setText(selected ? "Còn lại: " + available : "Chọn size và màu để xem tồn kho");
+            int quantity = Math.min(quantitySpinner.getValue(), Math.max(1, available));
+            quantitySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(
+                    1, Math.max(1, available), quantity));
+            quantitySpinner.setDisable(!canBuy);
+            addToCartButton.setDisable(!canBuy);
+            addToCartButton.setText(selected && available == 0 ? "Tạm hết hàng" : "Thêm vào giỏ hàng");
+        };
+        sizeChoice.valueProperty().addListener((observable, oldValue, newValue) -> refreshStock.run());
+        colorChoice.valueProperty().addListener((observable, oldValue, newValue) -> refreshStock.run());
+        refreshStock.run();
+        addToCartButton.setOnAction(event -> PurchaseAccess.withCustomer(() -> {
 
             int quantity =
                     quantitySpinner.getValue();
@@ -194,7 +205,7 @@ public class ProductDetailWindow {
             );
 
             alert.showAndWait();
-        });
+        }));
 
         Button cartButton =
                 new Button("Xem giỏ hàng");
@@ -240,9 +251,7 @@ public class ProductDetailWindow {
                         520
                 );
 
-        stage.setTitle("Chi tiết sản phẩm");
         scene.getStylesheets().add(ProductDetailWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
-        stage.setScene(scene);
-        stage.show();
+        PageNavigation.show("Chi tiết sản phẩm", scene);
     }
 }

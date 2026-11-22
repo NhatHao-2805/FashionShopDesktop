@@ -15,6 +15,27 @@ public class InventoryService {
     private final Gson gson =
             new Gson();
 
+    public record Variant(long id, String size, String color, int stock) {}
+    public record Allocation(String size, String color, int stock) {}
+    public record VariantSnapshot(int total, String sizes, String colors, List<Variant> variants) {}
+    private record AllocationRequest(VariantSnapshot expected, List<Allocation> allocations) {}
+
+    public VariantSnapshot getVariants(long productId) throws Exception {
+        return readVariants(apiClient.get("/api/admin/inventory/" + productId + "/variants"));
+    }
+
+    public VariantSnapshot allocate(long productId, VariantSnapshot expected, List<Allocation> allocations)
+            throws Exception {
+        return readVariants(apiClient.post("/api/admin/inventory/" + productId + "/variants",
+                gson.toJson(new AllocationRequest(expected, allocations))));
+    }
+
+    private VariantSnapshot readVariants(String json) {
+        var response = gson.fromJson(json, VariantResponse.class);
+        validate(response, "Không thể tải tồn kho size/màu.");
+        return response.data;
+    }
+
     public List<StockItem> getStockOverview()
             throws Exception {
 
@@ -150,6 +171,10 @@ public class InventoryService {
 
         boolean success;
         String message;
+    }
+
+    private static class VariantResponse extends BaseResponse {
+        VariantSnapshot data;
     }
 
     private static class StockResponse

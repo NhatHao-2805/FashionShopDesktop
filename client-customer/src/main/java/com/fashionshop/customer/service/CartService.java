@@ -40,9 +40,13 @@ public class CartService {
         }
         int existingQuantity = items.stream()
                 .filter(item -> item.getProduct().getId() == product.getId())
+                .filter(item -> !product.tracksVariants()
+                        || (java.util.Objects.equals(item.getSelectedSize(), size)
+                            && java.util.Objects.equals(item.getSelectedColor(), color)))
                 .mapToInt(CartItem::getQuantity).sum();
-        if (product.getStock() <= 0 || (long) existingQuantity + quantity > product.getStock()) {
-            throw new IllegalArgumentException("Số lượng trong giỏ vượt quá tồn kho. Hiện còn " + product.getStock() + " sản phẩm.");
+        int available = product.availableStock(size, color);
+        if ((long) existingQuantity + quantity > available) {
+            throw new IllegalArgumentException("Số lượng trong giỏ vượt quá tồn kho. Hiện còn " + available + " sản phẩm.");
         }
 
         for (CartItem item : items) {

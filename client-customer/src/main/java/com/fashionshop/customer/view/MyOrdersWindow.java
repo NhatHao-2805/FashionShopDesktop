@@ -10,7 +10,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -25,13 +24,7 @@ public class MyOrdersWindow {
     private final VBox ordersBox =
             new VBox(12);
 
-    private final Label statusLabel =
-            new Label(
-                    "Đang tải đơn hàng..."
-            );
-
-    private final ProgressIndicator progressIndicator =
-            new ProgressIndicator();
+    private final OperationStatus status = new OperationStatus();
 
     private final NumberFormat currency =
             NumberFormat.getCurrencyInstance(
@@ -41,7 +34,6 @@ public class MyOrdersWindow {
                     )
             );
 
-    private Stage stage;
 
     public static void show() {
 
@@ -50,9 +42,6 @@ public class MyOrdersWindow {
     }
 
     private void open() {
-
-        stage =
-                new Stage();
 
         Label titleLabel =
                 new Label(
@@ -69,6 +58,8 @@ public class MyOrdersWindow {
                         "Làm mới"
                 );
 
+        refreshButton.disableProperty().bind(status.busyProperty());
+        ordersBox.disableProperty().bind(status.busyProperty());
         refreshButton.setOnAction(
                 event -> loadOrders()
         );
@@ -105,28 +96,14 @@ public class MyOrdersWindow {
                 560
         );
 
-        progressIndicator.setPrefSize(
-                25,
-                25
-        );
-
-        HBox statusBox =
-                new HBox(
-                        10,
-                        progressIndicator,
-                        statusLabel
-                );
-
-        statusBox.setAlignment(
-                Pos.CENTER_LEFT
-        );
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         VBox root =
                 new VBox(
                         15,
                         titleBox,
-                        scrollPane,
-                        statusBox
+                        status,
+                        scrollPane
                 );
 
         root.setPadding(
@@ -140,24 +117,17 @@ public class MyOrdersWindow {
                         680
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Đơn hàng của tôi"
-        );
-
         scene.getStylesheets().add(MyOrdersWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
 
-        stage.setScene(scene);
-        stage.show();
+        PageNavigation.show("Đơn hàng của tôi", scene);
 
         loadOrders();
     }
 
     private void loadOrders() {
 
-        setLoading(
-                true,
-                "Đang tải đơn hàng..."
-        );
+        if (status.isBusy()) return;
+        status.loading("Đang tải đơn hàng của bạn…");
 
         Task<List<OrderService.OrderResult>> task =
                 new Task<>() {
@@ -171,31 +141,10 @@ public class MyOrdersWindow {
                     }
                 };
 
-        task.setOnSucceeded(event -> {
-
-            setLoading(
-                    false,
-                    ""
-            );
-
-            displayOrders(
-                    task.getValue()
-            );
-        });
-
+        task.setOnSucceeded(event -> displayOrders(task.getValue()));
         task.setOnFailed(event -> {
-
-            setLoading(
-                    false,
-                    "Không thể tải đơn hàng: "
-                            + getErrorMessage(
-                            task.getException()
-                    )
-            );
-
-            ordersBox
-                    .getChildren()
-                    .clear();
+            ordersBox.getChildren().clear();
+            status.error("Không tải được đơn hàng: " + getErrorMessage(task.getException()), this::loadOrders);
         });
 
         Thread thread =
@@ -216,9 +165,7 @@ public class MyOrdersWindow {
         if (orders == null
                 || orders.isEmpty()) {
 
-            statusLabel.setText(
-                    "Bạn chưa có đơn hàng."
-            );
+            status.empty("Bạn chưa có đơn hàng. Đơn mới sẽ xuất hiện ở đây sau khi đặt.");
 
             return;
         }
@@ -235,11 +182,7 @@ public class MyOrdersWindow {
                     );
         }
 
-        statusLabel.setText(
-                "Tổng cộng: "
-                        + orders.size()
-                        + " đơn hàng."
-        );
+        status.info("Tổng cộng: " + orders.size() + " đơn hàng.");
     }
 
     private VBox createOrderCard(
@@ -382,24 +325,6 @@ public class MyOrdersWindow {
         );
 
         return card;
-    }
-
-    private void setLoading(
-            boolean loading,
-            String message
-    ) {
-
-        progressIndicator.setVisible(
-                loading
-        );
-
-        progressIndicator.setManaged(
-                loading
-        );
-
-        statusLabel.setText(
-                message
-        );
     }
 
     private String formatMoney(

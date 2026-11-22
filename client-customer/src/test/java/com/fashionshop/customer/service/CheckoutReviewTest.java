@@ -1,5 +1,6 @@
 package com.fashionshop.customer.service;
 import com.fashionshop.customer.model.*;
+import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.*;
@@ -32,5 +33,19 @@ class CheckoutReviewTest {
             session.login("test-b",b); assertTrue(cart.getItems().isEmpty());
             cart.addProduct(product(100,10),1,"M","Đen"); session.logout(); assertTrue(cart.getItems().isEmpty());
         } finally { session.logout(); }
+    }
+
+    @Test void checksStockForTheSelectedSizeAndColor() {
+        Product current = new Gson().fromJson("""
+                {"id":1,"name":"Áo","price":100,"stock":4,"size":"M,L","color":"Đen,Trắng","status":"ACTIVE",
+                 "variants":[{"size":"M","color":"Đen","stock":0},{"size":"L","color":"Trắng","stock":4}]}
+                """, Product.class);
+        var unavailable = new CartItem(current, 1, "M", "Đen");
+        var available = new CartItem(current, 2, "L", "Trắng");
+        assertThrows(IllegalArgumentException.class,
+                () -> CheckoutReview.review(List.of(unavailable), List.of(current)));
+        assertEquals(200, CheckoutReview.review(List.of(available), List.of(current)).total());
+        assertThrows(IllegalArgumentException.class,
+                () -> CheckoutReview.review(List.of(available, available, available), List.of(current)));
     }
 }

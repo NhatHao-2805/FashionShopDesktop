@@ -59,7 +59,10 @@ public class ApiClient {
             String endpoint,
             String jsonBody
     ) throws Exception {
+        return responseBody(postResponse(endpoint, jsonBody));
+    }
 
+    public HttpResponse<String> postResponse(String endpoint, String jsonBody) throws Exception {
         HttpRequest.Builder builder =
                 baseRequest(
                         endpoint
@@ -82,7 +85,7 @@ public class ApiClient {
                 builder
         );
 
-        return send(
+        return sendResponse(
                 builder.build()
         );
     }
@@ -305,37 +308,20 @@ public class ApiClient {
     private String send(
             HttpRequest request
     ) throws Exception {
+        return responseBody(sendResponse(request));
+    }
 
+    private String responseBody(HttpResponse<String> response) {
+        String body = response.body() == null ? "" : response.body();
+        if (response.statusCode() >= 500 && body.isBlank()) {
+            throw new IllegalStateException("Server gặp lỗi HTTP " + response.statusCode() + ".");
+        }
+        return body;
+    }
+
+    private HttpResponse<String> sendResponse(HttpRequest request) throws Exception {
         try {
-
-            HttpResponse<String> response =
-                    httpClient.send(
-                            request,
-                            HttpResponse.BodyHandlers
-                                    .ofString(
-                                            StandardCharsets.UTF_8
-                                    )
-                    );
-
-            String body =
-                    response.body();
-
-            if (body == null) {
-                body = "";
-            }
-
-            if (response.statusCode() >= 500
-                    && body.isBlank()) {
-
-                throw new IllegalStateException(
-                        "Server gặp lỗi HTTP "
-                                + response.statusCode()
-                                + "."
-                );
-            }
-
-            return body;
-
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (ConnectException e) {
 
             throw new IllegalStateException(

@@ -7,7 +7,10 @@ import com.fashionshop.server.model.OrderItem;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class OrderRepository {
     @FunctionalInterface
@@ -28,6 +31,9 @@ public class OrderRepository {
                     connections.open();
 
             connection.setAutoCommit(false);
+            List<OrderItem> items = order.getItems().stream()
+                    .sorted(Comparator.comparingLong(OrderItem::getProductId)).toList();
+            Map<OrderItem, Long> variantIds = new HashMap<>();
 
             BigDecimal totalAmount =
                     BigDecimal.ZERO;
@@ -52,7 +58,7 @@ public class OrderRepository {
             ) {
 
                 for (OrderItem item :
-                        order.getItems()) {
+                        items) {
 
                     statement.setLong(
                             1,
@@ -121,6 +127,8 @@ public class OrderRepository {
                         if (item.getExpectedPrice() == null || price.compareTo(item.getExpectedPrice()) != 0)
                             throw new IllegalArgumentException("Giá sản phẩm đã thay đổi. Vui lòng kiểm tra lại giỏ hàng và xác nhận giá mới.");
                         item.setPrice(price);
+                        variantIds.put(item, VariantStockRepository.reserve(connection, item.getProductId(),
+                                item.getSelectedSize(), item.getSelectedColor(), item.getQuantity()));
 
                         item.setProductName(
                                 resultSet.getString(
@@ -233,9 +241,9 @@ public class OrderRepository {
                         order_id,
                         product_id,
                         quantity,
-                        price, selected_size, selected_color
+                        price, selected_size, selected_color, variant_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """;
 
             try (
@@ -246,7 +254,7 @@ public class OrderRepository {
             ) {
 
                 for (OrderItem item :
-                        order.getItems()) {
+                        items) {
 
                     statement.setLong(
                             1,
@@ -270,6 +278,7 @@ public class OrderRepository {
 
                     statement.setString(5, item.getSelectedSize());
                     statement.setString(6, item.getSelectedColor());
+                    statement.setObject(7, variantIds.get(item), Types.BIGINT);
                     statement.addBatch();
                 }
 
@@ -291,7 +300,7 @@ public class OrderRepository {
             ) {
 
                 for (OrderItem item :
-                        order.getItems()) {
+                        items) {
 
                     statement.setInt(
                             1,
@@ -650,13 +659,15 @@ public class OrderRepository {
                     SELECT
                         product_id,
                         quantity,
-                        price
+                        price, variant_id, selected_size, selected_color
                     FROM order_items
                     WHERE order_id = ?
+                    ORDER BY product_id, id
                     """;
 
             List<OrderItem> items =
                     new ArrayList<>();
+            Map<OrderItem, Long> variantIds = new HashMap<>();
 
             try (
                     PreparedStatement statement =
@@ -698,6 +709,9 @@ public class OrderRepository {
                                 )
                         );
 
+                        item.setSelectedSize(resultSet.getString("selected_size"));
+                        item.setSelectedColor(resultSet.getString("selected_color"));
+                        variantIds.put(item, resultSet.getObject("variant_id", Long.class));
                         items.add(item);
                     }
                 }
@@ -737,6 +751,12 @@ public class OrderRepository {
                                 "Không thể hoàn tồn kho sản phẩm ID="
                                         + item.getProductId()
                         );
+                    }
+
+                    Long variantId = variantIds.get(item);
+                    if (variantId != null) {
+                        VariantStockRepository.change(connection, variantId, item.getProductId(),
+                                item.getQuantity());
                     }
 
                     int stockAfter =

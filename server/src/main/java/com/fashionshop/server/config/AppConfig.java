@@ -51,4 +51,9 @@ public final class AppConfig {
     public static int getInt(String key) {
         return Integer.parseInt(get(key));
     }
+
+    public static String getWithEnvironmentOverride(String key, String environmentVariable) {
+        String override = System.getenv(environmentVariable);
+        return override == null || override.isBlank() ? get(key) : override.trim();
+    }
 }

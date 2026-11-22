@@ -14,7 +14,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -39,14 +38,10 @@ public class CartWindow {
             );
 
     public static void show() {
-        if (!PurchaseAccess.requireCustomer()) return;
-        new CartWindow().open();
+        PurchaseAccess.withCustomer(() -> new CartWindow().open());
     }
 
     private void open() {
-
-        Stage stage =
-                new Stage();
 
         Label titleLabel =
                 new Label("GIỎ HÀNG");
@@ -104,8 +99,7 @@ checkoutButton.setOnAction(event ->
         Button closeButton =
                 new Button("Đóng");
 
-        closeButton.setOnAction(event ->
-                stage.close()
+        closeButton.setOnAction(event -> PageNavigation.back(closeButton.getScene())
         );
 
         HBox leftBottomBox =
@@ -159,26 +153,21 @@ checkoutButton.setOnAction(event ->
                         520
                 );
 
-        stage.setTitle("Giỏ hàng");
         scene.getStylesheets().add(CartWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
-        stage.setScene(scene);
-
         long customerId = com.fashionshop.customer.service.SessionManager.getInstance().getCurrentUser().getId();
         ListChangeListener<CartItem> listener = change -> {
             Runnable update = () -> {
                 var session = com.fashionshop.customer.service.SessionManager.getInstance();
-                if (!session.isCustomer() || session.getCurrentUser().getId() != customerId) stage.close();
+                if (!session.isCustomer() || session.getCurrentUser().getId() != customerId) PageNavigation.back(scene);
                 else refresh();
             };
             if (javafx.application.Platform.isFxApplicationThread()) update.run();
             else javafx.application.Platform.runLater(update);
         };
         cartService.getItems().addListener(listener);
-        stage.setOnHidden(event -> cartService.getItems().removeListener(listener));
-
         refresh();
 
-        stage.show();
+        PageNavigation.show("Giỏ hàng", scene, () -> cartService.getItems().removeListener(listener));
     }
 
     private void refresh() {

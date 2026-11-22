@@ -3,8 +3,12 @@ package com.fashionshop.customer.service;
 import com.fashionshop.customer.model.CartItem;
 import com.fashionshop.customer.network.ApiClient;
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 
 import java.math.BigDecimal;
+import java.net.ConnectException;
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,22 +93,43 @@ public class OrderService {
         String jsonRequest =
                 gson.toJson(request);
 
-        String jsonResponse =
-                apiClient.post(
-                        "/api/protected/orders",
-                        jsonRequest
-                );
+        HttpResponse<String> reply;
+        try {
+            reply = apiClient.postResponse("/api/protected/orders", jsonRequest);
+        } catch (Exception e) {
+            if (e.getCause() instanceof ConnectException
+                    || e.getCause() instanceof HttpConnectTimeoutException) {
+                throw e;
+            }
+            throw new UnconfirmedOrderException(e);
+        }
 
-        ApiResponse response =
-                gson.fromJson(
-                        jsonResponse,
-                        ApiResponse.class
-                );
+        if (reply.statusCode() >= 500) {
+            throw new UnconfirmedOrderException(null);
+        }
+        ApiResponse response;
+        try {
+            response = gson.fromJson(reply.body(), ApiResponse.class);
+        } catch (JsonParseException e) {
+            throw new UnconfirmedOrderException(e);
+        }
+        if (reply.statusCode() >= 400 && reply.statusCode() < 500) {
+            if (response != null && response.message != null && !response.message.isBlank()) {
+                throw new IllegalStateException(response.message);
+            }
+            throw new IllegalStateException("Máy chủ từ chối đặt hàng (HTTP " + reply.statusCode() + ").");
+        }
+        if (reply.statusCode() < 200 || reply.statusCode() >= 300 || response == null
+                || !response.success || response.data == null || response.data.getId() <= 0) {
+            throw new UnconfirmedOrderException(null);
+        }
+        return response.data;
+    }
 
-        return requireData(
-                response,
-                "Đặt hàng thất bại."
-        );
+    public static final class UnconfirmedOrderException extends Exception {
+        private UnconfirmedOrderException(Throwable cause) {
+            super("Chưa xác nhận được kết quả đặt hàng. Hãy kiểm tra Đơn hàng của tôi trước khi đặt lại.", cause);
+        }
     }
 
     public List<OrderResult> getMyOrders()

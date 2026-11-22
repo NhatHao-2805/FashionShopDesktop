@@ -71,6 +71,20 @@ CREATE TABLE products (
 
 
 -- ============================================================
+-- PRODUCT VARIANTS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS product_variants (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT NOT NULL,
+    size_value VARCHAR(100) COLLATE utf8mb4_bin NOT NULL,
+    color_value VARCHAR(100) COLLATE utf8mb4_bin NOT NULL,
+    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    UNIQUE KEY uq_product_variant (product_id, size_value, color_value),
+    CONSTRAINT fk_variant_product FOREIGN KEY (product_id) REFERENCES products(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
 -- CARTS
 -- ============================================================
 
@@ -158,6 +172,7 @@ CREATE TABLE order_items (
     quantity INT NOT NULL,
     selected_size VARCHAR(100),
     selected_color VARCHAR(100),
+    variant_id BIGINT NULL,
     price DECIMAL(15,2) NOT NULL,
 
     PRIMARY KEY (id),
@@ -167,6 +182,9 @@ CREATE TABLE order_items (
         REFERENCES orders(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
+
+    CONSTRAINT fk_order_items_variant
+        FOREIGN KEY (variant_id) REFERENCES product_variants(id),
 
     CONSTRAINT fk_order_items_product
         FOREIGN KEY (product_id)

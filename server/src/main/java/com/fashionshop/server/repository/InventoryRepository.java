@@ -311,6 +311,14 @@ public class InventoryRepository {
                 );
             }
 
+            long allocated = VariantStockRepository.listLocked(connection, productId).stream()
+                    .mapToLong(VariantStockRepository.Variant::stock).sum();
+            if (stockAfter < allocated) {
+                throw new IllegalArgumentException(
+                        "Chỉ có thể xuất tối đa " + (stockBefore - allocated)
+                                + " sản phẩm chưa phân bổ. Giảm phân bổ size/màu trước khi xuất kho.");
+            }
+
             String updateSql = """
                     UPDATE products
                     SET stock = ?

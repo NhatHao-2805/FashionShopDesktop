@@ -30,10 +30,10 @@ public class ServerApplication {
             // =========================================================
 
             String host =
-                    AppConfig.get("server.host");
+                    AppConfig.getWithEnvironmentOverride("server.host", "FASHION_HTTP_HOST");
 
             int httpPort =
-                    AppConfig.getInt("server.http.port");
+                    Integer.parseInt(AppConfig.getWithEnvironmentOverride("server.http.port", "FASHION_HTTP_PORT"));
 
             int websocketPort =
                     AppConfig.getInt("server.websocket.port");
@@ -335,6 +335,7 @@ orderController.registerRoutes();
                       "data": {
                         "service": "fashion-shop-server",
                         "status": "UP",
+                        "variant_stock": true,
                         "http_port": %d
                       }
                     }

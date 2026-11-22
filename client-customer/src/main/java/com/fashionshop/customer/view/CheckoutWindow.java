@@ -5,12 +5,12 @@ import com.fashionshop.customer.service.CartService;
 import com.fashionshop.customer.service.OrderService;
 import com.fashionshop.customer.service.SessionManager;
 
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -27,8 +27,7 @@ public class CheckoutWindow {
             new OrderService();
 
     public static void show() {
-        if (!PurchaseAccess.requireCustomer()) return;
-        new CheckoutWindow().open();
+        PurchaseAccess.withCustomer(() -> new CheckoutWindow().open());
     }
 
     private void open() {
@@ -69,13 +68,6 @@ public class CheckoutWindow {
 
             return;
         }
-
-        Stage stage =
-                new Stage();
-
-        stage.initModality(
-                Modality.APPLICATION_MODAL
-        );
 
         Label titleLabel =
                 new Label("THÔNG TIN ĐẶT HÀNG");
@@ -153,10 +145,7 @@ public class CheckoutWindow {
                         + "-fx-text-fill: #345348;"
         );
 
-        Label messageLabel =
-                new Label();
-
-        messageLabel.setWrapText(true);
+        OperationStatus status = new OperationStatus();
 
         Button orderButton =
                 new Button("Xác nhận đặt hàng");
@@ -172,10 +161,16 @@ public class CheckoutWindow {
                         + "-fx-background-radius: 6;"
         );
 
+        var submitting = new SimpleBooleanProperty(false);
+        Button checkOrders = new Button("Kiểm tra đơn hàng của tôi");
+        checkOrders.setVisible(false);
+        checkOrders.managedProperty().bind(checkOrders.visibleProperty());
+        checkOrders.setOnAction(event -> MyOrdersWindow.show());
+        orderButton.disableProperty().bind(submitting.or(checkOrders.visibleProperty()));
+
         orderButton.setOnAction(event -> {
             if (!sessionManager.isCustomer() || sessionManager.getCurrentUser().getId() != user.getId()) {
-                messageLabel.setText("Phiên đăng nhập đã thay đổi. Vui lòng mở lại giỏ hàng.");
-                orderButton.setDisable(true);
+                status.info("Phiên đăng nhập đã thay đổi. Vui lòng mở lại giỏ hàng.");
                 return;
             }
 
@@ -195,7 +190,7 @@ public class CheckoutWindow {
                     || phone.isBlank()
                     || address.isBlank()) {
 
-                messageLabel.setText(
+                status.info(
                         "Vui lòng nhập đầy đủ tên, số điện thoại và địa chỉ."
                 );
 
@@ -205,11 +200,11 @@ public class CheckoutWindow {
             try {
                 com.fashionshop.customer.service.ShippingValidation.validate(receiverName, phone, address, note);
             } catch (IllegalArgumentException e) {
-                messageLabel.setText(e.getMessage());
+                status.error(e.getMessage(), null);
                 return;
             }
-            orderButton.setDisable(true);
-            messageLabel.setText("Đang kiểm tra giá và tồn kho mới nhất...");
+            submitting.set(true);
+            status.loading("Đang kiểm tra giá và tồn kho mới nhất… Nút đặt hàng sẽ mở lại nếu cần bạn chỉnh sửa.");
             var snapshot = cartService.getItems().stream().map(item ->
                     new com.fashionshop.customer.model.CartItem(item.getProduct(), item.getQuantity(),
                             item.getSelectedSize(), item.getSelectedColor())).toList();
@@ -220,48 +215,56 @@ public class CheckoutWindow {
                 }
             };
             reviewTask.setOnFailed(e -> {
-                messageLabel.setText(reviewTask.getException().getMessage());
-                orderButton.setDisable(false);
+                status.error(reviewTask.getException().getMessage(), null);
+                submitting.set(false);
             });
             reviewTask.setOnSucceeded(e -> {
-                if (!stage.isShowing() || !sameCustomer(user.getId())) {
-                    messageLabel.setText("Phiên đăng nhập đã thay đổi. Vui lòng mở lại giỏ hàng.");
+                if (!PageNavigation.isCurrent(orderButton.getScene()) || !sameCustomer(user.getId())) {
+                    status.info("Phiên đăng nhập đã thay đổi. Vui lòng mở lại giỏ hàng.");
+                    submitting.set(false);
                     return;
                 }
                 var review = reviewTask.getValue();
                 totalLabel.setText("Tổng thanh toán: " + currency.format(review.total()));
                 if (!review.changes().isEmpty()) {
                     Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                    confirm.initOwner(stage);
+                    confirm.initOwner(PageNavigation.window());
                     confirm.setHeaderText("Giá hoặc tồn kho đã thay đổi");
                     confirm.setContentText(String.join("\n", review.changes())
                             + "\nTổng mới: " + currency.format(review.total()) + "\nBạn đồng ý đặt hàng theo thông tin mới?");
                     if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
-                        messageLabel.setText("Chưa đặt hàng. Bạn có thể kiểm tra lại giỏ hàng.");
-                        orderButton.setDisable(false);
+                        status.info("Chưa đặt hàng. Bạn có thể kiểm tra lại giỏ hàng.");
+                        submitting.set(false);
                         return;
                     }
                 }
-                if (!sameCustomer(user.getId()) || !stage.isShowing()) return;
-                cartService.getItems().setAll(review.items());
-                messageLabel.setText("Đang tạo đơn hàng...");
+                if (!sameCustomer(user.getId()) || !PageNavigation.isCurrent(orderButton.getScene())) {
+                    submitting.set(false);
+                    return;
+                }
+                status.loading("Đang gửi đơn hàng… Vui lòng chờ xác nhận từ cửa hàng.");
                 javafx.concurrent.Task<OrderService.OrderResult> submit = new javafx.concurrent.Task<>() {
                     @Override protected OrderService.OrderResult call() throws Exception {
                         return orderService.createOrder(receiverName, phone, address, note, review.items());
                     }
                 };
                 submit.setOnFailed(error -> {
-                    messageLabel.setText(submit.getException().getMessage());
-                    orderButton.setDisable(false);
+                    Throwable failure = submit.getException();
+                    status.error(failure.getMessage(), null);
+                    checkOrders.setVisible(failure instanceof OrderService.UnconfirmedOrderException);
+                    submitting.set(false);
                 });
                 submit.setOnSucceeded(done -> {
+                    status.success("Đặt hàng thành công.");
                     if (sameCustomer(user.getId())) cartService.clear();
                     var result = submit.getValue();
                     Alert success = new Alert(Alert.AlertType.INFORMATION);
                     success.setHeaderText("Đã tạo đơn #" + result.getId());
                     success.setContentText("Tổng tiền: " + currency.format(result.getTotalAmount()));
+                    success.initOwner(PageNavigation.window());
                     success.showAndWait();
-                    stage.close();
+                    submitting.set(false);
+                    PageNavigation.back(orderButton.getScene());
                 });
                 startTask(submit);
             });
@@ -275,9 +278,8 @@ public class CheckoutWindow {
                 Double.MAX_VALUE
         );
 
-        cancelButton.setOnAction(
-                event -> stage.close()
-        );
+        cancelButton.setOnAction(event -> PageNavigation.back(cancelButton.getScene()));
+        cancelButton.disableProperty().bind(submitting);
 
         VBox root =
                 new VBox(
@@ -295,29 +297,29 @@ public class CheckoutWindow {
                         totalLabel,
                         orderButton,
                         cancelButton,
-                        messageLabel
+                        status,
+                        checkOrders
                 );
 
         root.setPadding(
                 new Insets(25)
         );
 
+        root.setMaxWidth(560);
+        StackPane form = new StackPane(root);
+        ScrollPane scroll = new ScrollPane(form);
+        scroll.setFitToWidth(true);
         Scene scene =
                 new Scene(
-                        root,
+                        scroll,
                         500,
                         620
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Đặt hàng"
-        );
-
         scene.getStylesheets().add(CheckoutWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
 
-        stage.setScene(scene);
-
-        stage.showAndWait();
+        PageNavigation.show("Đặt hàng", scene);
+        PageNavigation.guardBack(scene, () -> !submitting.get());
     }
     private boolean sameCustomer(long id) {
         return sessionManager.isCustomer() && sessionManager.getCurrentUser().getId() == id;

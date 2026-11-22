@@ -65,7 +65,7 @@ VALUES
         249000,
         'products/ao-thun-basic.jpg',
         'M,L,XL',
-        'Đen',
+        'Đen,Trắng',
         30,
         'ACTIVE'
     ),
@@ -146,6 +146,37 @@ VALUES
         40,
         'ACTIVE'
     );
+
+-- Sample counts for the demo catalog only.
+INSERT INTO product_variants (product_id, size_value, color_value, stock)
+SELECT p.id, sample.size_value, sample.color_value, sample.stock
+FROM (
+    SELECT 'Áo thun basic Premium' AS name, 'M' AS size_value, 'Đen' AS color_value, 0 AS stock
+    UNION ALL SELECT 'Áo thun basic Premium', 'L', 'Đen', 10
+    UNION ALL SELECT 'Áo thun basic Premium', 'XL', 'Đen', 8
+    UNION ALL SELECT 'Áo thun basic Premium', 'M', 'Trắng', 5
+    UNION ALL SELECT 'Áo thun basic Premium', 'L', 'Trắng', 4
+    UNION ALL SELECT 'Áo thun basic Premium', 'XL', 'Trắng', 3
+    UNION ALL SELECT 'Áo sơ mi Oxford', 'M', 'Trắng', 8
+    UNION ALL SELECT 'Áo sơ mi Oxford', 'L', 'Trắng', 7
+    UNION ALL SELECT 'Áo sơ mi Oxford', 'XL', 'Trắng', 5
+    UNION ALL SELECT 'Quần jean Slim Fit', '29', 'Xanh', 7
+    UNION ALL SELECT 'Quần jean Slim Fit', '30', 'Xanh', 8
+    UNION ALL SELECT 'Quần jean Slim Fit', '31', 'Xanh', 6
+    UNION ALL SELECT 'Quần jean Slim Fit', '32', 'Xanh', 4
+    UNION ALL SELECT 'Quần kaki Basic', '29', 'Be', 0
+    UNION ALL SELECT 'Quần kaki Basic', '30', 'Be', 8
+    UNION ALL SELECT 'Quần kaki Basic', '31', 'Be', 6
+    UNION ALL SELECT 'Quần kaki Basic', '32', 'Be', 4
+    UNION ALL SELECT 'Váy Midi thanh lịch', 'S', 'Đen', 6
+    UNION ALL SELECT 'Váy Midi thanh lịch', 'M', 'Đen', 5
+    UNION ALL SELECT 'Váy Midi thanh lịch', 'L', 'Đen', 4
+    UNION ALL SELECT 'Váy hoa mùa hè', 'S', 'Hoa', 4
+    UNION ALL SELECT 'Váy hoa mùa hè', 'M', 'Hoa', 5
+    UNION ALL SELECT 'Váy hoa mùa hè', 'L', 'Hoa', 3
+    UNION ALL SELECT 'Túi tote Canvas', 'FREE', 'Kem', 35
+    UNION ALL SELECT 'Mũ lưỡi trai Basic', 'FREE', 'Đen', 40
+) sample JOIN products p ON p.name = sample.name;
 
 -- ============================================================
 -- 4. CARTS

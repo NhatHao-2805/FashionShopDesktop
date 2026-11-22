@@ -12,6 +12,7 @@ import java.util.List;
 
 public class ProductRepository {
 
+
     // =============================================================
     // FIND ALL ACTIVE PRODUCTS
     // =============================================================
@@ -29,17 +30,16 @@ public class ProductRepository {
                     p.size,
                     p.color,
                     p.stock,
+                    v.id AS variant_id, v.size_value, v.color_value, v.stock AS variant_stock,
                     p.image_path,
                     p.status
                 FROM products p
                 LEFT JOIN categories c
                     ON c.id = p.category_id
+                LEFT JOIN product_variants v ON v.product_id = p.id
                 WHERE p.status = 'ACTIVE'
-                ORDER BY p.id DESC
+                ORDER BY p.id DESC, v.id
                 """;
-
-        List<Product> products =
-                new ArrayList<>();
 
         try (
                 Connection connection =
@@ -52,14 +52,7 @@ public class ProductRepository {
                         statement.executeQuery()
         ) {
 
-            while (resultSet.next()) {
-
-                products.add(
-                        mapProduct(resultSet)
-                );
-            }
-
-            return products;
+            return readProducts(resultSet);
 
         } catch (SQLException e) {
 
@@ -88,14 +81,15 @@ public class ProductRepository {
                     p.size,
                     p.color,
                     p.stock,
+                    v.id AS variant_id, v.size_value, v.color_value, v.stock AS variant_stock,
                     p.image_path,
                     p.status
                 FROM products p
                 LEFT JOIN categories c
                     ON c.id = p.category_id
+                LEFT JOIN product_variants v ON v.product_id = p.id
                 WHERE p.id = ?
                   AND p.status = 'ACTIVE'
-                LIMIT 1
                 """;
 
         try (
@@ -116,14 +110,7 @@ public class ProductRepository {
                             statement.executeQuery()
             ) {
 
-                if (!resultSet.next()) {
-
-                    return null;
-                }
-
-                return mapProduct(
-                        resultSet
-                );
+                return readProducts(resultSet).stream().findFirst().orElse(null);
             }
 
         } catch (SQLException e) {
@@ -157,11 +144,13 @@ public class ProductRepository {
                             p.size,
                             p.color,
                             p.stock,
+                            v.id AS variant_id, v.size_value, v.color_value, v.stock AS variant_stock,
                             p.image_path,
                             p.status
                         FROM products p
                         LEFT JOIN categories c
                             ON c.id = p.category_id
+                        LEFT JOIN product_variants v ON v.product_id = p.id
                         WHERE p.status = 'ACTIVE'
                         """);
 
@@ -221,12 +210,8 @@ public class ProductRepository {
         // =========================================================
 
         sql.append("""
-                ORDER BY p.id DESC
+                ORDER BY p.id DESC, v.id
                 """);
-
-
-        List<Product> products =
-                new ArrayList<>();
 
 
         try (
@@ -257,15 +242,8 @@ public class ProductRepository {
                             statement.executeQuery()
             ) {
 
-                while (resultSet.next()) {
-
-                    products.add(
-                            mapProduct(resultSet)
-                    );
-                }
+                return readProducts(resultSet);
             }
-
-            return products;
 
         } catch (SQLException e) {
 
@@ -280,6 +258,38 @@ public class ProductRepository {
     // =============================================================
     // MAP RESULTSET -> PRODUCT
     // =============================================================
+
+    private List<Product> readProducts(ResultSet rows) throws SQLException {
+        List<Product> products = new ArrayList<>();
+        Product product = null;
+        List<Product.Variant> variants = new ArrayList<>();
+        while (rows.next()) {
+            long id = rows.getLong("id");
+            if (product == null || product.getId() != id) {
+                if (product != null) {
+                    applyVariants(product, variants);
+                }
+                product = mapProduct(rows);
+                products.add(product);
+                variants = new ArrayList<>();
+            }
+            if (rows.getObject("variant_id") != null) {
+                variants.add(new Product.Variant(rows.getString("size_value"),
+                        rows.getString("color_value"), rows.getInt("variant_stock")));
+            }
+        }
+        if (product != null) {
+            applyVariants(product, variants);
+        }
+        return products;
+    }
+
+    private void applyVariants(Product product, List<Product.Variant> variants) {
+        if (!variants.isEmpty()) {
+            product.setVariants(variants);
+            product.setStock(variants.stream().mapToInt(Product.Variant::stock).sum());
+        }
+    }
 
     private Product mapProduct(
             ResultSet resultSet

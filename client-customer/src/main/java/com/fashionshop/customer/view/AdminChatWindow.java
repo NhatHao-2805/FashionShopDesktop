@@ -14,7 +14,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
@@ -114,14 +113,11 @@ public class AdminChatWindow {
         }
 
 
-        Stage stage =
-                new Stage();
-
         BorderPane root =
                 new BorderPane();
 
         root.setStyle(
-                "-fx-background-color: #f3f4f6;"
+                "-fx-background-color: #dce6ee;"
         );
 
 
@@ -146,7 +142,7 @@ public class AdminChatWindow {
                 );
 
         inboxSubtitle.setStyle(
-                "-fx-text-fill: #6b7280;"
+                "-fx-text-fill: #41596c;"
         );
 
 
@@ -227,7 +223,7 @@ public class AdminChatWindow {
                                         );
 
                                 preview.setStyle(
-                                        "-fx-text-fill: #6b7280;"
+                                        "-fx-text-fill: #41596c;"
                                                 + "-fx-font-size: 12px;"
                                 );
 
@@ -377,8 +373,8 @@ public class AdminChatWindow {
         );
 
         left.setStyle(
-                "-fx-background-color: white;"
-                        + "-fx-border-color: transparent #e5e7eb transparent transparent;"
+                "-fx-background-color: #edf3f7;"
+                        + "-fx-border-color: transparent #adbfce transparent transparent;"
         );
 
         root.setLeft(
@@ -396,7 +392,7 @@ public class AdminChatWindow {
         );
 
         customerInfo.setStyle(
-                "-fx-text-fill: #6b7280;"
+                "-fx-text-fill: #41596c;"
         );
 
         VBox chatHeader =
@@ -413,8 +409,8 @@ public class AdminChatWindow {
         );
 
         chatHeader.setStyle(
-                "-fx-background-color: white;"
-                        + "-fx-border-color: transparent transparent #e5e7eb transparent;"
+                "-fx-background-color: #edf3f7;"
+                        + "-fx-border-color: transparent transparent #adbfce transparent;"
         );
 
 
@@ -430,7 +426,7 @@ public class AdminChatWindow {
 
         messageScroll.setStyle(
                 "-fx-background-color: transparent;"
-                        + "-fx-background: #f3f4f6;"
+                        + "-fx-background: #dce6ee;"
         );
 
 
@@ -448,7 +444,7 @@ public class AdminChatWindow {
 
 
         sendButton.setStyle(
-                "-fx-background-color: #2563eb;"
+                "-fx-background-color: #294b61;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 8;"
@@ -507,8 +503,8 @@ public class AdminChatWindow {
         );
 
         inputArea.setStyle(
-                "-fx-background-color: white;"
-                        + "-fx-border-color: #e5e7eb transparent transparent transparent;"
+                "-fx-background-color: #edf3f7;"
+                        + "-fx-border-color: #adbfce transparent transparent transparent;"
         );
 
 
@@ -540,23 +536,13 @@ public class AdminChatWindow {
                         700
                 );
 
-        stage.setTitle(
-                "Fashion Shop Admin - Tin nhắn khách hàng"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.show();
+        PageNavigation.show("Tin nhắn khách hàng", scene, this::stopRefresh);
 
 
         
 
         configureRealtime();
-stage.setOnHidden(
-                event -> stopRefresh()
-        );
+
 
 
         refreshConversations();
@@ -918,7 +904,7 @@ stage.setOnHidden(
                     );
 
             empty.setStyle(
-                    "-fx-text-fill: #6b7280;"
+                    "-fx-text-fill: #41596c;"
             );
 
             messageBox
@@ -1006,8 +992,8 @@ stage.setOnHidden(
                         + "-fx-text-fill: "
                         + (
                         mine
-                                ? "#dbeafe"
-                                : "#6b7280"
+                                ? "#d9e8f3"
+                                : "#41596c"
                 )
                         + ";"
         );
@@ -1032,7 +1018,7 @@ stage.setOnHidden(
                         + (
                         mine
                                 ? "white"
-                                : "#111827"
+                                : "#1d2e3b"
                 )
                         + ";"
         );
@@ -1050,7 +1036,7 @@ stage.setOnHidden(
                         + "-fx-text-fill: "
                         + (
                         mine
-                                ? "#dbeafe"
+                                ? "#d9e8f3"
                                 : "#9ca3af"
                 )
                         + ";"
@@ -1080,10 +1066,10 @@ stage.setOnHidden(
 
         bubble.setStyle(
                 mine
-                        ? "-fx-background-color: #2563eb;"
+                        ? "-fx-background-color: #294b61;"
                         + "-fx-background-radius: 14;"
-                        : "-fx-background-color: white;"
-                        + "-fx-border-color: #e5e7eb;"
+                        : "-fx-background-color: #edf3f7;"
+                        + "-fx-border-color: #adbfce;"
                         + "-fx-border-radius: 14;"
                         + "-fx-background-radius: 14;"
         );

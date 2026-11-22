@@ -14,7 +14,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
@@ -97,9 +96,6 @@ public class CustomerChatWindow {
             return;
         }
 
-
-        Stage stage =
-                new Stage();
 
         BorderPane root =
                 new BorderPane();
@@ -262,23 +258,13 @@ public class CustomerChatWindow {
                         620
                 );
 
-        stage.setTitle(
-                "Fashion Shop - Chat hỗ trợ"
-        );
-
-        stage.setScene(
-                scene
-        );
-
-        stage.show();
+        PageNavigation.show("Chat với shop", scene, this::stopRefresh);
 
 
         
 
         configureRealtime();
-stage.setOnHidden(
-                event -> stopRefresh()
-        );
+
 
 
         loadConversationInfo();
