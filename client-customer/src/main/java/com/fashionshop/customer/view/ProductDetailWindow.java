@@ -1,8 +1,10 @@
 package com.fashionshop.customer.view;
 
+import com.fashionshop.customer.config.ServerConfig;
 import com.fashionshop.customer.model.Product;
 import com.fashionshop.customer.service.CartService;
 
+import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -13,6 +15,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -20,9 +23,6 @@ import java.text.NumberFormat;
 import java.util.Locale;
 
 public class ProductDetailWindow {
-
-    private static final String IMAGE_BASE_URL =
-            "http://localhost:8080/";
 
     public static void show(
             Product product
@@ -39,16 +39,26 @@ public class ProductDetailWindow {
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
 
-        if (product.getImageUrl() != null
-                && !product.getImageUrl().isBlank()) {
+        Label imageStatus = new Label("Chưa có ảnh sản phẩm");
+        imageStatus.getStyleClass().add("muted");
+        StackPane imagePane = new StackPane(imageView, imageStatus);
+        imagePane.getStyleClass().add("product-image");
+        imagePane.setMinSize(350, 350);
+        imagePane.setMaxSize(350, 350);
 
-            Image image =
-                    new Image(
-                            IMAGE_BASE_URL + product.getImageUrl(),
-                            true
-                    );
-
-            imageView.setImage(image);
+        String imageUrl = ServerConfig.resourceUrl(product.getImageUrl());
+        if (imageUrl != null) {
+            try {
+                Image image = new Image(imageUrl, 700, 700, true, true, true);
+                imageView.setImage(image);
+                imageStatus.textProperty().bind(Bindings.when(image.errorProperty())
+                        .then("Không tải được ảnh sản phẩm")
+                        .otherwise("Đang tải ảnh…"));
+                imageStatus.visibleProperty().bind(
+                        image.errorProperty().or(image.progressProperty().lessThan(1)));
+            } catch (IllegalArgumentException ignored) {
+                imageStatus.setText("Không tải được ảnh sản phẩm");
+            }
         }
 
         Label nameLabel =
@@ -220,7 +230,7 @@ public class ProductDetailWindow {
                 new BorderPane();
 
         root.setPadding(new Insets(20));
-        root.setLeft(imageView);
+        root.setLeft(imagePane);
         root.setCenter(infoBox);
 
         Scene scene =

@@ -36,7 +36,10 @@ import java.util.Comparator;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.TreeSet;
+import java.util.stream.Stream;
 
 public class CustomerApplication extends Application {
 
@@ -86,6 +89,8 @@ private final Button cartButton =
             new ArrayList<>();
 
     private final ComboBox<String> sortBox = new ComboBox<>();
+    private static final String ALL_COLORS = "Tất cả màu";
+    private final ComboBox<String> colorBox = new ComboBox<>();
     private boolean catalogLoaded;
     private boolean catalogLoading;
     private Stage primaryStage;
@@ -154,6 +159,10 @@ private final Button cartButton =
         sortBox.getItems().setAll("Mặc định", "Giá: thấp đến cao", "Giá: cao đến thấp", "Tên: A → Z");
         sortBox.getSelectionModel().selectFirst();
         sortBox.setOnAction(event -> filterProducts());
+        colorBox.getItems().add(ALL_COLORS);
+        colorBox.setValue(ALL_COLORS);
+        colorBox.setPrefWidth(150);
+        colorBox.setOnAction(event -> filterProducts());
         productFlowPane.setHgap(18);
         productFlowPane.setVgap(26);
         productFlowPane.setPadding(new Insets(4, 0, 20, 0));
@@ -199,10 +208,12 @@ private final Button cartButton =
         clear.setOnAction(event -> {
             searchField.clear();
             categoryComboBox.getSelectionModel().clearSelection();
+            colorBox.setValue(ALL_COLORS);
             sortBox.getSelectionModel().selectFirst();
             filterProducts();
         });
         HBox filters = new HBox(12, label("Danh mục", "muted"), categoryComboBox,
+                label("Màu sắc", "muted"), colorBox,
                 spacer(), label("Sắp xếp", "muted"), sortBox, clear);
         filters.setAlignment(Pos.CENTER_LEFT);
         filters.getStyleClass().add("filter-bar");
@@ -440,6 +451,13 @@ cartButton.setVisible(true);
                                                     categories
                                             );
 
+                                    var colors = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+                                    allProducts.stream().flatMap(CustomerApplication::productColors)
+                                            .forEach(colors::add);
+                                    colorBox.getItems().setAll(ALL_COLORS);
+                                    colorBox.getItems().addAll(colors);
+                                    colorBox.setValue(ALL_COLORS);
+
                                     catalogLoading = false;
                                     catalogLoaded = true;
                                     filterProducts();
@@ -485,6 +503,13 @@ cartButton.setVisible(true);
         thread.start();
     }
 
+    private static Stream<String> productColors(Product product) {
+        String colors = product.getColor();
+        return colors == null ? Stream.empty() : Arrays.stream(colors.split(","))
+                .map(String::strip)
+                .filter(color -> !color.isEmpty());
+    }
+
     private void filterProducts() {
         if (!catalogLoaded) return;
 
@@ -499,6 +524,7 @@ cartButton.setVisible(true);
 
         Category selectedCategory =
                 categoryComboBox.getValue();
+        String selectedColor = colorBox.getValue();
 
         List<Product> filteredProducts =
                 allProducts.stream()
@@ -546,7 +572,10 @@ cartButton.setVisible(true);
                                             );
 
                                     return keywordMatch
-                                            && categoryMatch;
+                                            && categoryMatch
+                                            && (selectedColor == null || ALL_COLORS.equals(selectedColor)
+                                                    || productColors(product)
+                                                    .anyMatch(selectedColor::equalsIgnoreCase));
                                 }
                         )
                         .toList();

@@ -1,13 +1,13 @@
 .root {
     -fx-font-family: "Segoe UI";
     -fx-font-size: 13px;
-    -fx-accent: #345348;
-    -fx-focus-color: #496b5d;
-    -fx-faint-focus-color: #496b5d22;
-    -fx-background-color: #f9f8f5;
+    -fx-accent: #294b61;
+    -fx-focus-color: #466c86;
+    -fx-faint-focus-color: #466c8622;
+    -fx-background-color: #dce6ee;
 }
 
-.label { -fx-text-fill: #252923; }
+.label { -fx-text-fill: #1d2e3b; }
 
 .button {
     -fx-background-radius: 3;
@@ -17,13 +17,13 @@
 }
 
 .button:focused, .combo-box:focused {
-    -fx-border-color: #496b5d;
+    -fx-border-color: #466c86;
     -fx-border-radius: 3;
 }
 
 .shop-header {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e6e3dc;
+    -fx-background-color: #314a5d;
+    -fx-border-color: #adbfce;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 16 32;
 }
@@ -31,71 +31,75 @@
 .brand {
     -fx-font-family: "Georgia";
     -fx-font-size: 29px;
-    -fx-text-fill: #25382e;
+    -fx-text-fill: #243d50;
 }
 
-.header-caption { -fx-text-fill: #5c625a; -fx-padding: 0 10 0 0; }
-.header-button { -fx-background-color: transparent; -fx-text-fill: #323b33; }
-.header-button:hover { -fx-background-color: #f0f1ec; }
+.shop-header .brand { -fx-text-fill: #f4f8fb; }
+.shop-header .cart-button { -fx-background-color: #b8cbd9; -fx-text-fill: #203748; }
+.shop-header .cart-button:hover { -fx-background-color: #d2e0ea; }
+.header-caption { -fx-text-fill: #dae6ee; -fx-padding: 0 10 0 0; }
+.header-button { -fx-background-color: transparent; -fx-text-fill: #f0f5f8; }
+.header-button:hover { -fx-background-color: #415c70; }
 
 .cart-button, .primary-button {
-    -fx-background-color: #345348;
+    -fx-background-color: #294b61;
     -fx-text-fill: #ffffff;
 }
 
-.cart-button:hover, .primary-button:hover { -fx-background-color: #263f36; }
+.cart-button:hover, .primary-button:hover { -fx-background-color: #1c374b; }
 
 .soft-button {
-    -fx-background-color: #eceee7;
-    -fx-text-fill: #30483c;
+    -fx-background-color: #b8cbd9;
+    -fx-text-fill: #233d50;
 }
 
-.soft-button:hover { -fx-background-color: #dfe5db; }
+.soft-button:hover { -fx-background-color: #a6bdce; }
 .search-box { -fx-alignment: center-left; }
 .store-content { -fx-padding: 24 32 28; }
-.scroll-pane, .scroll-pane > .viewport { -fx-background-color: #f9f8f5; }
+.scroll-pane, .scroll-pane > .viewport { -fx-background-color: #dce6ee; }
 .scroll-pane { -fx-background-insets: 0; -fx-padding: 0; }
-.muted { -fx-text-fill: #5e655c; }
+.muted { -fx-text-fill: #41596c; }
 
 .section-title {
     -fx-font-family: "Segoe UI Semibold";
     -fx-font-size: 32px;
-    -fx-text-fill: #252923;
+    -fx-text-fill: #1d2e3b;
 }
 
 .filter-bar {
-    -fx-border-color: #e6e3dc;
-    -fx-border-width: 1 0;
-    -fx-padding: 11 0;
+    -fx-background-color: #c7d7e3;
+    -fx-border-color: #adbfce;
+    -fx-border-width: 1;
+    -fx-padding: 11 14;
 }
 
 .combo-box, .text-field, .password-field {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #edf3f7;
     -fx-background-radius: 3;
-    -fx-border-color: #deded6;
+    -fx-border-color: #9eb4c6;
     -fx-border-radius: 3;
 }
 
 .combo-box { -fx-padding: 3; }
 .text-field, .password-field {
     -fx-padding: 9 11;
-    -fx-prompt-text-fill: #626860;
+    -fx-prompt-text-fill: #475e70;
 }
 
-.text-field:focused, .password-field:focused { -fx-border-color: #496b5d; }
+.text-field:focused, .password-field:focused { -fx-border-color: #466c86; }
 
 .product-card {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e6e3dc;
+    -fx-background-color: #eaf1f6;
+    -fx-border-color: #adbfce;
     -fx-border-insets: -1;
 }
 
-.product-card:hover { -fx-border-color: #a0ae9e; }
-.product-image { -fx-background-color: #efeee9; }
+.product-card:hover { -fx-border-color: #6386a0; }
+.product-image { -fx-background-color: #c5d5e2; }
 .product-information { -fx-padding: 12 13 13; }
 .product-name { -fx-font-size: 14px; -fx-font-weight: bold; }
-.product-price { -fx-text-fill: #25382e; -fx-font-size: 17px; -fx-font-weight: bold; }
-.product-category, .product-meta { -fx-font-size: 11px; -fx-text-fill: #5e655c; }
+.product-price { -fx-text-fill: #243d50; -fx-font-size: 17px; -fx-font-weight: bold; }
+.product-category, .product-meta { -fx-font-size: 11px; -fx-text-fill: #41596c; }
 .product-information .button { -fx-padding: 7 10; }
 .stock { -fx-font-size: 11px; -fx-text-fill: #355e46; }
 .sold-out { -fx-font-size: 11px; -fx-text-fill: #9a3b34; }
