@@ -370,7 +370,7 @@ public class OrderDetailWindow {
                     );
 
             cancelButton.setStyle(
-                    "-fx-background-color: #bd4c30;"
+                    "-fx-background-color: #9a3b34;"
                             + "-fx-text-fill: white;"
                             + "-fx-font-weight: bold;"
             );

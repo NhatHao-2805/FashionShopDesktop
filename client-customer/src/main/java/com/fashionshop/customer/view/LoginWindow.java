@@ -29,40 +29,11 @@ public class LoginWindow {
                 Modality.APPLICATION_MODAL
         );
 
-        Label brand =
-                new Label(
-                        "FASHION SHOP"
-                );
+        Label brand = new Label("Fashion Shop");
+        brand.getStyleClass().add("brand");
 
-        brand.setStyle(
-                "-fx-font-size: 28px;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #343d33;"
-        );
-
-        Label titleLabel =
-                new Label(
-                        "ĐĂNG NHẬP"
-                );
-
-        titleLabel.setStyle(
-                "-fx-font-size: 20px;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #c95332;"
-        );
-
-        Label description =
-                new Label(
-                        "Khách hàng và quản trị viên sử dụng chung một màn hình đăng nhập."
-                );
-
-        description.setWrapText(
-                true
-        );
-
-        description.setStyle(
-                "-fx-text-fill: #6b7280;"
-        );
+        Label titleLabel = new Label("Đăng nhập");
+        titleLabel.getStyleClass().add("section-title");
 
         TextField emailField =
                 new TextField();
@@ -126,12 +97,7 @@ public class LoginWindow {
                 44
         );
 
-        loginButton.setStyle(
-                "-fx-background-color: #c95332;"
-                        + "-fx-text-fill: white;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-background-radius: 8;"
-        );
+        loginButton.getStyleClass().add("primary-button");
 
         Runnable loginAction =
                 () -> {
@@ -267,37 +233,18 @@ public class LoginWindow {
                 event -> loginAction.run()
         );
 
-        VBox root =
-                new VBox(
-                        14,
-                        brand,
-                        titleLabel,
-                        description,
-                        emailField,
-                        passwordField,
-                        loginButton,
-                        progress,
-                        messageLabel
-                );
+        Label emailLabel = new Label("Email");
+        emailLabel.setLabelFor(emailField);
+        Label passwordLabel = new Label("Mật khẩu");
+        passwordLabel.setLabelFor(passwordField);
+        VBox email = new VBox(5, emailLabel, emailField);
+        VBox password = new VBox(5, passwordLabel, passwordField);
+        VBox root = new VBox(14, brand, titleLabel, email, password, loginButton, progress, messageLabel);
+        root.setAlignment(Pos.CENTER_LEFT);
+        root.setPadding(new Insets(28, 38, 28, 38));
+        messageLabel.managedProperty().bind(messageLabel.textProperty().isNotEmpty());
 
-        root.setAlignment(
-                Pos.CENTER
-        );
-
-        root.setPadding(
-                new Insets(35)
-        );
-
-        root.setStyle(
-                "-fx-background-color: white;"
-        );
-
-        Scene scene =
-                new Scene(
-                        root,
-                        500,
-                        430
-                );
+        Scene scene = new Scene(root, 440, 415);
 
         stage.setTitle(
                 "Fashion Shop - Đăng nhập"

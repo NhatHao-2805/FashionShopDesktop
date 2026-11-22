@@ -72,7 +72,7 @@ public class ProductDetailWindow {
         priceLabel.setStyle(
                 "-fx-font-size: 20px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #bd4c30;"
+                        + "-fx-text-fill: #345348;"
         );
 
         Label descriptionLabel =
@@ -139,7 +139,7 @@ public class ProductDetailWindow {
                 new Button("Thêm vào giỏ hàng");
 
         addToCartButton.setStyle(
-                "-fx-background-color: #c95332;"
+                "-fx-background-color: #345348;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 6;"

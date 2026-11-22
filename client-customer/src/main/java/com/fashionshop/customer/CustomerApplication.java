@@ -86,7 +86,6 @@ private final Button cartButton =
             new ArrayList<>();
 
     private final ComboBox<String> sortBox = new ComboBox<>();
-    private ScrollPane storefrontScroll;
     private boolean catalogLoaded;
     private boolean catalogLoading;
     private Stage primaryStage;
@@ -151,13 +150,12 @@ private final Button cartButton =
         chatButton.getStyleClass().add("header-button");
         logoutButton.getStyleClass().add("header-button");
         cartButton.getStyleClass().add("cart-button");
-        searchField.setPromptText("Tìm áo, quần và phong cách của bạn...");
         searchField.setMaxWidth(Double.MAX_VALUE);
         sortBox.getItems().setAll("Mặc định", "Giá: thấp đến cao", "Giá: cao đến thấp", "Tên: A → Z");
         sortBox.getSelectionModel().selectFirst();
         sortBox.setOnAction(event -> filterProducts());
-        productFlowPane.setHgap(16);
-        productFlowPane.setVgap(20);
+        productFlowPane.setHgap(18);
+        productFlowPane.setVgap(26);
         productFlowPane.setPadding(new Insets(4, 0, 20, 0));
         updateCartButtonText();
     }
@@ -176,47 +174,26 @@ private final Button cartButton =
     }
 
     private void showStorefront() {
-        Label brand = label("fashion shop", "brand");
-        HBox utility = new HBox(12, label("THỜI TRANG CHO MỖI NGÀY", "header-caption"),
-                spacer(), userLabel, loginButton, ordersButton, chatButton, logoutButton);
-        utility.setAlignment(Pos.CENTER_LEFT);
+        Label brand = label("Fashion Shop", "brand");
         userLabel.getStyleClass().add("header-caption");
-        Button searchButton = new Button("Tìm kiếm");
-        searchButton.getStyleClass().add("primary-button");
+        HBox navigation = new HBox(6, brand, spacer(), userLabel,
+                loginButton, ordersButton, chatButton, logoutButton, cartButton);
+        navigation.setAlignment(Pos.CENTER_LEFT);
+        navigation.setMaxWidth(1280);
+        VBox header = new VBox(navigation);
+        header.setAlignment(Pos.CENTER);
+        header.getStyleClass().add("shop-header");
+
+        searchField.setPromptText("Tìm theo tên sản phẩm");
+        Button searchButton = new Button("Tìm");
+        searchButton.getStyleClass().add("soft-button");
         searchButton.setOnAction(event -> filterProducts());
         searchField.setOnAction(event -> filterProducts());
         HBox search = new HBox(8, searchField, searchButton);
         search.getStyleClass().add("search-box");
         HBox.setHgrow(searchField, Priority.ALWAYS);
-        HBox.setHgrow(search, Priority.ALWAYS);
-        HBox mainHeader = new HBox(28, brand, search, cartButton);
-        mainHeader.setAlignment(Pos.CENTER_LEFT);
-        VBox header = new VBox(14, utility, mainHeader);
-        header.getStyleClass().add("shop-header");
+        search.setPrefWidth(330);
 
-        Button explore = new Button("Khám phá ngay  →");
-        explore.getStyleClass().add("primary-button");
-        explore.setOnAction(event -> storefrontScroll.setVvalue(1));
-        VBox heroText = new VBox(12, label("THE EVERYDAY EDIT", "eyebrow"),
-                label("Mặc đẹp mỗi ngày.\nTheo cách của bạn.", "hero-title"),
-                label("Những thiết kế dễ mặc, dễ phối cho tủ đồ yêu thích của bạn.", "muted"), explore);
-        heroText.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(heroText, Priority.ALWAYS);
-        VBox heroAccent = new VBox(12, label("YOUR STYLE", "eyebrow"),
-                label("Less is more.", "accent-title"),
-                label("BASIC  /  CASUAL  /  EVERYDAY", "muted"),
-                label("Tìm cảm hứng mới từ những điều đơn giản.", "muted"));
-        heroAccent.getStyleClass().add("hero-accent");
-        heroAccent.setAlignment(Pos.CENTER_LEFT);
-        heroAccent.setPrefWidth(320);
-        HBox hero = new HBox(28, heroText, heroAccent);
-        hero.getStyleClass().add("hero");
-        hero.setAlignment(Pos.CENTER_LEFT);
-
-        HBox benefits = new HBox(24, label("01   Chọn phong cách", "benefit"), spacer(),
-                label("02   Thêm vào giỏ hàng", "benefit"), spacer(),
-                label("03   Đặt hàng dễ dàng", "benefit"));
-        benefits.getStyleClass().add("benefits");
         Button clear = new Button("Xóa bộ lọc");
         clear.getStyleClass().add("soft-button");
         clear.setOnAction(event -> {
@@ -229,24 +206,22 @@ private final Button cartButton =
                 spacer(), label("Sắp xếp", "muted"), sortBox, clear);
         filters.setAlignment(Pos.CENTER_LEFT);
         filters.getStyleClass().add("filter-bar");
-        HBox collectionTitle = new HBox(12, label("Khám phá sản phẩm", "section-title"), spacer(),
-                label("TỦ ĐỒ MỚI BẮT ĐẦU TỪ ĐÂY", "eyebrow"));
+        HBox collectionTitle = new HBox(18, label("Sản phẩm", "section-title"), spacer(), search);
         collectionTitle.setAlignment(Pos.CENTER_LEFT);
         statusLabel.getStyleClass().add("muted");
-        VBox content = new VBox(22, hero, benefits, collectionTitle, filters, statusLabel, productFlowPane,
-                label("FASHION SHOP   •   Phong cách của bạn, lựa chọn của bạn.", "footer"));
+        VBox content = new VBox(16, collectionTitle, filters, statusLabel, productFlowPane);
         content.getStyleClass().add("store-content");
-        content.setMaxWidth(1240);
+        content.setMaxWidth(1280);
         VBox wrapper = new VBox(content);
         wrapper.setAlignment(Pos.TOP_CENTER);
-        storefrontScroll = new ScrollPane(wrapper);
+        ScrollPane storefrontScroll = new ScrollPane(wrapper);
         storefrontScroll.setFitToWidth(true);
         storefrontScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         BorderPane root = new BorderPane(storefrontScroll);
         root.setTop(header);
         Scene scene = new Scene(root, 1320, 860);
         scene.getStylesheets().add(getClass().getResource("/com/fashionshop/customer/shop.css").toExternalForm());
-        primaryStage.setTitle("Fashion Shop | Thời trang mỗi ngày");
+        primaryStage.setTitle("Fashion Shop");
         primaryStage.setMinWidth(1000);
         primaryStage.setMinHeight(680);
         primaryStage.setScene(scene);

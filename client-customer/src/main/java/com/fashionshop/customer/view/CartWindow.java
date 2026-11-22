@@ -71,14 +71,14 @@ public class CartWindow {
         totalPriceLabel.setStyle(
                 "-fx-font-size: 18px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #bd4c30;"
+                        + "-fx-text-fill: #345348;"
         );
 
 Button checkoutButton =
         new Button("Đặt hàng");
 
 checkoutButton.setStyle(
-        "-fx-background-color: #bd4c30;"
+        "-fx-background-color: #345348;"
                 + "-fx-text-fill: white;"
                 + "-fx-font-weight: bold;"
 );

@@ -60,7 +60,7 @@ public class AdminDashboardWindow {
                 new BorderPane();
 
         root.setStyle(
-                "-fx-background-color: #f3f4f6;"
+                "-fx-background-color: #f9f8f5;"
         );
 
         root.setLeft(
@@ -99,7 +99,7 @@ public class AdminDashboardWindow {
 
         Label brand =
                 new Label(
-                        "FASHION\nSHOP"
+                        "Fashion Shop"
                 );
 
         brand.setStyle(
@@ -110,11 +110,11 @@ public class AdminDashboardWindow {
 
         Label role =
                 new Label(
-                        "ADMIN PANEL"
+                        "Quản trị cửa hàng"
                 );
 
         role.setStyle(
-                "-fx-text-fill: #93c5fd;"
+                "-fx-text-fill: #becdc0;"
                         + "-fx-font-weight: bold;"
         );
 
@@ -260,7 +260,7 @@ public class AdminDashboardWindow {
         );
 
         sidebar.setStyle(
-                "-fx-background-color: #111827;"
+                "-fx-background-color: #25382e;"
         );
 
         return sidebar;
@@ -311,7 +311,7 @@ public class AdminDashboardWindow {
                 );
 
         refresh.setStyle(
-                "-fx-background-color: #2563eb;"
+                "-fx-background-color: #345348;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
         );
@@ -704,7 +704,7 @@ public class AdminDashboardWindow {
 
         button.setStyle(
                 "-fx-background-color: transparent;"
-                        + "-fx-text-fill: #d1d5db;"
+                        + "-fx-text-fill: #e3e9e1;"
                         + "-fx-font-weight: bold;"
         );
 
@@ -713,7 +713,7 @@ public class AdminDashboardWindow {
 
     private String activeStyle() {
 
-        return "-fx-background-color: #2563eb;"
+        return "-fx-background-color: #345348;"
                 + "-fx-text-fill: white;"
                 + "-fx-font-weight: bold;"
                 + "-fx-background-radius: 8;";

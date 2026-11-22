@@ -150,7 +150,7 @@ public class CheckoutWindow {
         totalLabel.setStyle(
                 "-fx-font-size: 18px;"
                         + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #bd4c30;"
+                        + "-fx-text-fill: #345348;"
         );
 
         Label messageLabel =
@@ -166,7 +166,7 @@ public class CheckoutWindow {
         );
 
         orderButton.setStyle(
-                "-fx-background-color: #bd4c30;"
+                "-fx-background-color: #345348;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
                         + "-fx-background-radius: 6;"

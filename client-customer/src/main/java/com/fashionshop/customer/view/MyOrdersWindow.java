@@ -339,7 +339,7 @@ public class MyOrdersWindow {
                 );
 
         detailButton.setStyle(
-                "-fx-background-color: #c95332;"
+                "-fx-background-color: #345348;"
                         + "-fx-text-fill: white;"
                         + "-fx-font-weight: bold;"
         );

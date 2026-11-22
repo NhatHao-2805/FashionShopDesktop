@@ -1,44 +1,102 @@
+.root {
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 13px;
+    -fx-accent: #345348;
+    -fx-focus-color: #496b5d;
+    -fx-faint-focus-color: #496b5d22;
+    -fx-background-color: #f9f8f5;
+}
 
-.root { -fx-font-family: "Segoe UI"; -fx-font-size: 13px; -fx-background-color: #f7f5f2; -fx-text-fill: #30332f; -fx-accent: #d65b39; }
-.label { -fx-text-fill: #30332f; }
-.button { -fx-cursor: hand; -fx-padding: 10 18; -fx-background-radius: 7; -fx-font-weight: bold; }
-.button:focused, .combo-box:focused { -fx-border-color: #ae482d; -fx-border-radius: 7; }
-.shop-header { -fx-background-color: linear-gradient(to right, #bd4c30, #df6944); -fx-padding: 12 38 22 38; }
-.brand { -fx-font-size: 30px; -fx-font-weight: bold; -fx-text-fill: white; }
-.header-caption { -fx-text-fill: #fff2e9; -fx-font-size: 11px; }
-.header-button { -fx-background-color: transparent; -fx-text-fill: white; -fx-padding: 5 10; }
-.header-button:hover { -fx-background-color: #a9422c; }
-.cart-button { -fx-background-color: #fff6ed; -fx-text-fill: #a7442c; -fx-padding: 15 20; }
-.search-box { -fx-background-color: white; -fx-padding: 5; -fx-background-radius: 8; -fx-alignment: center-left; }
-.search-box .text-field { -fx-background-color: white; -fx-border-width: 0; -fx-padding: 10 12; }
-.primary-button { -fx-background-color: #c95332; -fx-text-fill: white; }
-.primary-button:hover { -fx-background-color: #ad4229; }
-.soft-button { -fx-background-color: #f9ece4; -fx-text-fill: #ac472d; }
-.soft-button:hover { -fx-background-color: #f3dacd; }
-.store-content { -fx-padding: 28 30 20 30; }
-.scroll-pane, .scroll-pane > .viewport { -fx-background-color: #f7f5f2; }
+.label { -fx-text-fill: #252923; }
+
+.button {
+    -fx-background-radius: 3;
+    -fx-cursor: hand;
+    -fx-font-weight: 600;
+    -fx-padding: 9 14;
+}
+
+.button:focused, .combo-box:focused {
+    -fx-border-color: #496b5d;
+    -fx-border-radius: 3;
+}
+
+.shop-header {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e6e3dc;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 16 32;
+}
+
+.brand {
+    -fx-font-family: "Georgia";
+    -fx-font-size: 29px;
+    -fx-text-fill: #25382e;
+}
+
+.header-caption { -fx-text-fill: #5c625a; -fx-padding: 0 10 0 0; }
+.header-button { -fx-background-color: transparent; -fx-text-fill: #323b33; }
+.header-button:hover { -fx-background-color: #f0f1ec; }
+
+.cart-button, .primary-button {
+    -fx-background-color: #345348;
+    -fx-text-fill: #ffffff;
+}
+
+.cart-button:hover, .primary-button:hover { -fx-background-color: #263f36; }
+
+.soft-button {
+    -fx-background-color: #eceee7;
+    -fx-text-fill: #30483c;
+}
+
+.soft-button:hover { -fx-background-color: #dfe5db; }
+.search-box { -fx-alignment: center-left; }
+.store-content { -fx-padding: 24 32 28; }
+.scroll-pane, .scroll-pane > .viewport { -fx-background-color: #f9f8f5; }
 .scroll-pane { -fx-background-insets: 0; -fx-padding: 0; }
-.hero { -fx-background-color: #eee5d8; -fx-background-radius: 14; -fx-padding: 32 36; }
-.eyebrow { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #9a614a; }
-.hero-title { -fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: #343d33; }
-.hero-accent { -fx-background-color: #dce1d3; -fx-background-radius: 90 12 12 12; -fx-padding: 38 30; -fx-min-height: 210; }
-.accent-title { -fx-font-size: 30px; -fx-font-weight: bold; -fx-text-fill: #435443; }
-.muted { -fx-text-fill: #77796f; }
-.benefits { -fx-background-color: white; -fx-background-radius: 10; -fx-padding: 18 24; }
-.benefit { -fx-font-size: 13px; -fx-text-fill: #626d59; }
-.section-title { -fx-font-size: 23px; -fx-font-weight: bold; }
-.filter-bar { -fx-background-color: white; -fx-background-radius: 8; -fx-padding: 14 18; }
-.combo-box { -fx-background-color: #f5f3ef; -fx-background-radius: 6; -fx-padding: 5; }
-.product-card { -fx-background-color: white; -fx-background-radius: 10; -fx-border-color: #e8e4de; -fx-border-radius: 10; -fx-padding: 12; -fx-spacing: 10; }
-.product-card:hover { -fx-border-color: #ce6748; -fx-effect: dropshadow(gaussian, rgba(62,44,29,0.10), 14, 0, 0, 4); }
-.product-image { -fx-background-color: #f2f0eb; -fx-background-radius: 7; }
+.muted { -fx-text-fill: #5e655c; }
+
+.section-title {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 32px;
+    -fx-text-fill: #252923;
+}
+
+.filter-bar {
+    -fx-border-color: #e6e3dc;
+    -fx-border-width: 1 0;
+    -fx-padding: 11 0;
+}
+
+.combo-box, .text-field, .password-field {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 3;
+    -fx-border-color: #deded6;
+    -fx-border-radius: 3;
+}
+
+.combo-box { -fx-padding: 3; }
+.text-field, .password-field {
+    -fx-padding: 9 11;
+    -fx-prompt-text-fill: #626860;
+}
+
+.text-field:focused, .password-field:focused { -fx-border-color: #496b5d; }
+
+.product-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e6e3dc;
+    -fx-border-insets: -1;
+}
+
+.product-card:hover { -fx-border-color: #a0ae9e; }
+.product-image { -fx-background-color: #efeee9; }
+.product-information { -fx-padding: 12 13 13; }
 .product-name { -fx-font-size: 14px; -fx-font-weight: bold; }
-.product-price { -fx-text-fill: #bd4c30; -fx-font-size: 21px; -fx-font-weight: bold; }
-.product-category { -fx-font-size: 10px; -fx-text-fill: #8b6957; -fx-font-weight: bold; }
-.product-meta { -fx-font-size: 11px; -fx-text-fill: #797b73; }
-.stock { -fx-font-size: 11px; -fx-text-fill: #597254; }
-.sold-out { -fx-font-size: 11px; -fx-text-fill: #b85035; }
-.footer { -fx-padding: 20 0; -fx-text-fill: #8c8c81; -fx-font-size: 11px; }
+.product-price { -fx-text-fill: #25382e; -fx-font-size: 17px; -fx-font-weight: bold; }
+.product-category, .product-meta { -fx-font-size: 11px; -fx-text-fill: #5e655c; }
+.product-information .button { -fx-padding: 7 10; }
+.stock { -fx-font-size: 11px; -fx-text-fill: #355e46; }
+.sold-out { -fx-font-size: 11px; -fx-text-fill: #9a3b34; }
 .empty-state { -fx-padding: 36; }
-.text-field, .password-field { -fx-background-color: #f7f5f2; -fx-background-radius: 7; -fx-padding: 12; -fx-prompt-text-fill: #8c8c81; }
-.text-field:focused, .password-field:focused { -fx-border-color: #d58465; -fx-border-radius: 7; }
