@@ -5,6 +5,7 @@ import com.fashionshop.customer.model.Product;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import java.util.Map;
 
 public class CartService {
 
@@ -82,6 +83,17 @@ public class CartService {
 
     public void clear() {
         items.clear();
+        refreshItems();
+    }
+
+    public void confirmPurchase(Map<CartItem, Integer> purchased) {
+        items.removeIf(item -> {
+            Integer quantity = purchased.get(item);
+            if (quantity == null) return false;
+            if (item.getQuantity() <= quantity) return true;
+            item.setQuantity(item.getQuantity() - quantity);
+            return false;
+        });
         refreshItems();
     }
 

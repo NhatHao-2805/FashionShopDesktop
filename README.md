@@ -96,7 +96,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\run-shop.ps1 -DatabaseActi
 powershell -NoProfile -ExecutionPolicy Bypass -File .\run-shop.ps1
 ```
 
-Script tạo cấu hình cục bộ với khóa JWT ngẫu nhiên, khởi động MariaDB của XAMPP khi cần và chờ máy chủ tải được danh mục trước khi mở hai ứng dụng. Nếu dùng schema mặc định, các lần chạy sau có thể kết nối lại máy chủ FashionShop đang chạy.
+Script tạo cấu hình cục bộ với khóa JWT ngẫu nhiên, khởi động MariaDB của XAMPP khi cần và chờ máy chủ tải được danh mục trước khi mở ứng dụng chính. Ứng dụng chính có một màn hình đăng nhập dùng chung: tài khoản khách hàng vào cửa hàng, tài khoản quản trị vào bảng điều khiển admin. Nếu dùng schema mặc định, các lần chạy sau có thể kết nối lại máy chủ FashionShop đang chạy.
 
 - Dùng `-Client Customer`, `-Client Admin` hoặc `-Client None` để chọn cửa sổ cần mở.
 - Dùng `-XamppRoot D:\xampp` nếu script chưa tìm được XAMPP và `-Port 18085` nếu cần chọn cổng cụ thể.
@@ -205,6 +205,7 @@ Dự án gồm các module Maven riêng; chạy lệnh trong từng thư mục c
 - Khách chọn size/màu trên cửa sổ chi tiết trước khi thêm vào giỏ.
 - Giỏ và đơn hàng tách theo sản phẩm + size + màu; server kiểm tra lựa chọn thuộc cấu hình sản phẩm.
 - Database cũ cần áp dụng `database/migrate_variant_stock.sql` trước khi khởi động bản mới. Nếu chưa có `selected_size` và `selected_color` trong `order_items`, áp dụng `database/migrate_size_color.sql` trước. Database mới có sẵn cả hai thay đổi trong script tạo bảng.
+- Bản chống trùng đơn cần thêm `database/migrate_order_requests.sql` trên database cũ. Chế độ `-DatabaseAction Migrate` tự áp dụng bước này và giữ nguyên đơn hàng đã có.
 - Trong **Kho hàng → Phân bổ size/màu**, nhập số lượng thực tế cho từng tổ hợp. Sản phẩm cũ tiếp tục bán theo tồn chung cho đến khi quản trị viên lưu phân bổ lần đầu. Từ thời điểm đó, chỉ phần đã phân bổ mới bán được. Sản phẩm mẫu trên database mới đã có số lượng riêng cho mỗi tổ hợp.
 - Trong **Điều chỉnh kho**, nhập hàng để tăng tổng tồn, sau đó phân bổ số mới cho từng size/màu. Khi xuất kho, giảm số phân bổ của tổ hợp cần xuất để số đó trở về phần chưa phân bổ. Việc phân bổ giữ nguyên tổng tồn.
 - Khi hủy đơn, hàng được hoàn về đúng biến thể đã trừ. Đơn tạo trước khi sản phẩm có phân bổ hoàn về phần chưa phân bổ; quản trị viên có thể phân bổ lại sau khi kiểm hàng. Các size/màu đã có dòng tồn kho cần được giữ trong cấu hình sản phẩm để bảo toàn lịch sử giao dịch.
@@ -218,6 +219,8 @@ Thay đổi này không chủ động đóng các kết nối WebSocket đã m�
 ## Xác nhận giá, tồn kho và thông tin giao hàng
 
 - Khi đặt hàng, client tải danh sách sản phẩm mới nhất trên luồng nền. Nếu giá hoặc tồn kho đổi, hiển thị thông tin và tổng tiền mới để khách xác nhận; hủy xác nhận thì không tạo đơn.
+- Mỗi lần xác nhận đặt hàng có một mã yêu cầu. Nếu mất phản hồi, nút **Gửi lại yêu cầu cũ** gửi lại cùng mã và cùng nội dung. Máy chủ trả về đơn đã lưu nếu yêu cầu trước đó thành công. Hệ thống chỉ ghi đơn và trừ kho một lần cho mỗi mã của khách hàng.
+- Khi mở lại màn hình đặt hàng sau khi khởi động lại, client kiểm tra mã yêu cầu còn lưu trên máy. Nếu đơn đã được tạo, client hiển thị lại mã đơn. Nếu chưa tìm thấy đơn, khách có thể nhập lại thông tin và lần gửi tiếp theo vẫn dùng cùng mã. Client chỉ lưu mã yêu cầu cục bộ, thông tin giao hàng không được lưu cùng mã.
 - Nếu sản phẩm ngừng bán, lựa chọn size/màu không còn hợp lệ hoặc số lượng vượt tồn của biến thể, yêu cầu sửa giỏ hàng trước. Sản phẩm chưa phân bổ dùng tổng tồn chung.
 - Client gửi `expectedPrice` cho từng dòng đơn. Server so sánh với giá trong database dưới khóa `FOR UPDATE`, rồi mới tạo đơn/trừ kho. Nếu giá đổi sau bước xác nhận, transaction bị hủy và khách phải kiểm tra lại.
 - Cập nhật server và client cùng phiên bản: client cũ không gửi `expectedPrice` sẽ bị yêu cầu tải lại giỏ hàng.

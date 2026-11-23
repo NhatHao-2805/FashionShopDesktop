@@ -63,6 +63,10 @@ public class ApiClient {
     }
 
     public HttpResponse<String> postResponse(String endpoint, String jsonBody) throws Exception {
+        return postResponse(endpoint, jsonBody, null);
+    }
+
+    public HttpResponse<String> postResponse(String endpoint, String jsonBody, String requestId) throws Exception {
         HttpRequest.Builder builder =
                 baseRequest(
                         endpoint
@@ -84,6 +88,7 @@ public class ApiClient {
         addAuthorization(
                 builder
         );
+        if (requestId != null) builder.header("Idempotency-Key", requestId);
 
         return sendResponse(
                 builder.build()

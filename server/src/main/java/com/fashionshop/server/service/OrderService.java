@@ -27,7 +27,12 @@ public class OrderService {
             String paymentMethod,
             List<OrderItem> items
     ) {
+        return createOrder(userId, receiverName, phone, address, note, paymentMethod, items, null, null);
+    }
 
+    public Order createOrder(long userId, String receiverName, String phone, String address,
+                             String note, String paymentMethod, List<OrderItem> items,
+                             String requestId, String fingerprint) {
         ShippingValidation.validate(receiverName, phone, address, note);
         phone = ShippingValidation.normalizePhone(phone);
 
@@ -120,9 +125,7 @@ public class OrderService {
                 normalizedItems
         );
 
-        return orderRepository.create(
-                order
-        );
+        return requestId == null ? orderRepository.create(order) : orderRepository.create(order, requestId, fingerprint);
     }
 
     public List<Order> getOrdersByUser(
@@ -134,6 +137,11 @@ public class OrderService {
         return orderRepository.findByUserId(
                 userId
         );
+    }
+
+    public Order getOrderByRequestId(long userId, String requestId) {
+        validateUserId(userId);
+        return orderRepository.findByRequestId(userId, requestId);
     }
 
     public Order getOrderDetail(

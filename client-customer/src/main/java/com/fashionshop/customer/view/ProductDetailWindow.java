@@ -18,6 +18,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Priority;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -31,8 +32,8 @@ public class ProductDetailWindow {
         ImageView imageView =
                 new ImageView();
 
-        imageView.setFitWidth(350);
-        imageView.setFitHeight(350);
+        imageView.setFitWidth(430);
+        imageView.setFitHeight(430);
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
 
@@ -40,8 +41,9 @@ public class ProductDetailWindow {
         imageStatus.getStyleClass().add("muted");
         StackPane imagePane = new StackPane(imageView, imageStatus);
         imagePane.getStyleClass().add("product-image");
-        imagePane.setMinSize(350, 350);
-        imagePane.setMaxSize(350, 350);
+        imagePane.setMinSize(430, 430);
+        imagePane.setPrefSize(430, 430);
+        imagePane.setMaxSize(430, 430);
 
         String imageUrl = ServerConfig.resourceUrl(product.getImageUrl());
         if (imageUrl != null) {
@@ -235,23 +237,33 @@ public class ProductDetailWindow {
                         buttonBox
                 );
 
-        infoBox.setPadding(new Insets(20));
+        infoBox.setPadding(new Insets(28, 34, 28, 34));
+        infoBox.setPrefWidth(540);
+        infoBox.setMaxWidth(540);
+        infoBox.getStyleClass().add("product-detail-info");
+
+        HBox productCard = new HBox(34, imagePane, infoBox);
+        productCard.setPadding(new Insets(28));
+        productCard.setMaxSize(1060, 520);
+        productCard.getStyleClass().add("product-detail-card");
+        HBox.setHgrow(infoBox, Priority.NEVER);
 
         BorderPane root =
                 new BorderPane();
 
-        root.setPadding(new Insets(20));
-        root.setLeft(imagePane);
-        root.setCenter(infoBox);
+        StackPane content = new StackPane(productCard);
+        content.setPadding(new Insets(28));
+        root.setCenter(content);
 
         Scene scene =
                 new Scene(
                         root,
-                        850,
-                        520
+                        1120,
+                        680
                 );
 
         scene.getStylesheets().add(ProductDetailWindow.class.getResource("/com/fashionshop/customer/shop.css").toExternalForm());
         PageNavigation.show("Chi tiết sản phẩm", scene);
+        PageNavigation.guardBack(scene, () -> true);
     }
 }

@@ -28,13 +28,14 @@ public class OrderService {
                 new Gson();
     }
 
-    public OrderResult createOrder(
+    public PreparedOrder prepareOrder(
+            String requestId,
             String receiverName,
             String phone,
             String address,
             String note,
             List<CartItem> cartItems
-    ) throws Exception {
+    ) {
 
         SessionManager.getInstance().requireCustomer();
         if (cartItems == null || cartItems.isEmpty()) {
@@ -90,12 +91,14 @@ public class OrderService {
             );
         }
 
-        String jsonRequest =
-                gson.toJson(request);
+        return new PreparedOrder(requestId, gson.toJson(request));
+    }
 
+    public OrderResult submitOrder(PreparedOrder order) throws Exception {
+        SessionManager.getInstance().requireCustomer();
         HttpResponse<String> reply;
         try {
-            reply = apiClient.postResponse("/api/protected/orders", jsonRequest);
+            reply = apiClient.postResponse("/api/protected/orders/idempotent", order.payload(), order.requestId());
         } catch (Exception e) {
             if (e.getCause() instanceof ConnectException
                     || e.getCause() instanceof HttpConnectTimeoutException) {
@@ -115,9 +118,9 @@ public class OrderService {
         }
         if (reply.statusCode() >= 400 && reply.statusCode() < 500) {
             if (response != null && response.message != null && !response.message.isBlank()) {
-                throw new IllegalStateException(response.message);
+                throw rejected(reply.statusCode(), response.message);
             }
-            throw new IllegalStateException("Máy chủ từ chối đặt hàng (HTTP " + reply.statusCode() + ").");
+            throw rejected(reply.statusCode(), "Máy chủ từ chối đặt hàng (HTTP " + reply.statusCode() + ").");
         }
         if (reply.statusCode() < 200 || reply.statusCode() >= 300 || response == null
                 || !response.success || response.data == null || response.data.getId() <= 0) {
@@ -126,9 +129,39 @@ public class OrderService {
         return response.data;
     }
 
+    public record PreparedOrder(String requestId, String payload) { }
+
+    public OrderResult findOrderForRequest(String requestId) throws Exception {
+        SessionManager.getInstance().requireCustomer();
+        ApiResponse response = gson.fromJson(apiClient.get("/api/protected/order-requests/" + requestId), ApiResponse.class);
+        if (response == null || !response.success) {
+            throw new IllegalStateException(response == null || response.message == null
+                    ? "Không thể kiểm tra yêu cầu đặt hàng." : response.message);
+        }
+        return response.data;
+    }
+
+    private Exception rejected(int status, String message) {
+        // Authentication failures cannot tell a retry whether an earlier attempt committed.
+        if (status == 409) return new CheckoutConflict(message);
+        return status == 401 || status == 403 ? new IllegalStateException(message) : new RejectedOrderException(message);
+    }
+
+    public static final class CheckoutConflict extends Exception {
+        private CheckoutConflict(String message) {
+            super(message);
+        }
+    }
+
+    public static final class RejectedOrderException extends Exception {
+        private RejectedOrderException(String message) {
+            super(message);
+        }
+    }
+
     public static final class UnconfirmedOrderException extends Exception {
         private UnconfirmedOrderException(Throwable cause) {
-            super("Chưa xác nhận được kết quả đặt hàng. Hãy kiểm tra Đơn hàng của tôi trước khi đặt lại.", cause);
+            super("Chưa nhận được xác nhận. Bạn có thể gửi lại cùng yêu cầu mà không tạo đơn trùng.", cause);
         }
     }
 

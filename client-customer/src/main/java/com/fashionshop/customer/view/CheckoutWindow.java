@@ -1,11 +1,15 @@
 package com.fashionshop.customer.view;
 
+import com.fashionshop.customer.model.CartItem;
 import com.fashionshop.customer.model.User;
 import com.fashionshop.customer.service.CartService;
+import com.fashionshop.customer.service.CheckoutKeyStore;
 import com.fashionshop.customer.service.OrderService;
 import com.fashionshop.customer.service.SessionManager;
 
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -13,9 +17,15 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.text.NumberFormat;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.prefs.BackingStoreException;
 
 public class CheckoutWindow {
+    private record PendingOrder(OrderService.PreparedOrder request, Map<CartItem, Integer> purchased) { }
+    private static final Map<Long, PendingOrder> PENDING_ORDERS = new HashMap<>();
+    private final NumberFormat currency = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
 
     private final CartService cartService =
             CartService.getInstance();
@@ -31,8 +41,18 @@ public class CheckoutWindow {
     }
 
     private void open() {
-
-        if (cartService.getItems().isEmpty()) {
+        User user = sessionManager.getCurrentUser();
+        PendingOrder pending = PENDING_ORDERS.get(user.getId());
+        String remembered;
+        try {
+            remembered = CheckoutKeyStore.pendingKey(user.getId());
+        } catch (SecurityException failure) {
+            var alert = new Alert(Alert.AlertType.ERROR, "Không đọc được mã đặt hàng đã lưu trên máy.");
+            alert.initOwner(PageNavigation.window());
+            alert.showAndWait();
+            return;
+        }
+        if (cartService.getItems().isEmpty() && pending == null && remembered == null) {
 
             Alert alert =
                     new Alert(
@@ -48,9 +68,6 @@ public class CheckoutWindow {
 
             return;
         }
-
-        User user =
-                sessionManager.getCurrentUser();
 
         if (!sessionManager.isCustomer()) {
 
@@ -126,11 +143,6 @@ public class CheckoutWindow {
                         "Phương thức thanh toán: COD"
                 );
 
-        NumberFormat currency =
-                NumberFormat.getCurrencyInstance(
-                        new Locale("vi", "VN")
-                );
-
         Label totalLabel =
                 new Label(
                         "Tổng thanh toán: "
@@ -166,11 +178,25 @@ public class CheckoutWindow {
         checkOrders.setVisible(false);
         checkOrders.managedProperty().bind(checkOrders.visibleProperty());
         checkOrders.setOnAction(event -> MyOrdersWindow.show());
-        orderButton.disableProperty().bind(submitting.or(checkOrders.visibleProperty()));
+        checkOrders.disableProperty().bind(submitting);
+        var lockFields = submitting.or(checkOrders.visibleProperty());
+        nameField.disableProperty().bind(lockFields);
+        phoneField.disableProperty().bind(lockFields);
+        addressArea.disableProperty().bind(lockFields);
+        noteArea.disableProperty().bind(lockFields);
+        orderButton.disableProperty().bind(submitting.or(
+                Bindings.isEmpty(cartService.getItems()).and(checkOrders.visibleProperty().not())));
+        if (pending != null) showPending(status, orderButton, checkOrders);
 
         orderButton.setOnAction(event -> {
             if (!sessionManager.isCustomer() || sessionManager.getCurrentUser().getId() != user.getId()) {
                 status.info("Phiên đăng nhập đã thay đổi. Vui lòng mở lại giỏ hàng.");
+                return;
+            }
+
+            PendingOrder previous = PENDING_ORDERS.get(user.getId());
+            if (previous != null) {
+                submit(user.getId(), previous, status, submitting, orderButton, checkOrders);
                 return;
             }
 
@@ -205,9 +231,11 @@ public class CheckoutWindow {
             }
             submitting.set(true);
             status.loading("Đang kiểm tra giá và tồn kho mới nhất… Nút đặt hàng sẽ mở lại nếu cần bạn chỉnh sửa.");
-            var snapshot = cartService.getItems().stream().map(item ->
-                    new com.fashionshop.customer.model.CartItem(item.getProduct(), item.getQuantity(),
-                            item.getSelectedSize(), item.getSelectedColor())).toList();
+            Map<CartItem, Integer> purchased = new HashMap<>();
+            var snapshot = cartService.getItems().stream().map(item -> {
+                purchased.put(item, item.getQuantity());
+                return new CartItem(item.getProduct(), item.getQuantity(), item.getSelectedSize(), item.getSelectedColor());
+            }).toList();
             javafx.concurrent.Task<com.fashionshop.customer.service.CheckoutReview.Result> reviewTask = new javafx.concurrent.Task<>() {
                 @Override protected com.fashionshop.customer.service.CheckoutReview.Result call() {
                     return com.fashionshop.customer.service.CheckoutReview.review(snapshot,
@@ -242,31 +270,19 @@ public class CheckoutWindow {
                     submitting.set(false);
                     return;
                 }
-                status.loading("Đang gửi đơn hàng… Vui lòng chờ xác nhận từ cửa hàng.");
-                javafx.concurrent.Task<OrderService.OrderResult> submit = new javafx.concurrent.Task<>() {
-                    @Override protected OrderService.OrderResult call() throws Exception {
-                        return orderService.createOrder(receiverName, phone, address, note, review.items());
-                    }
-                };
-                submit.setOnFailed(error -> {
-                    Throwable failure = submit.getException();
+                try {
+                    String requestId = CheckoutKeyStore.remember(user.getId());
+                    var request = orderService.prepareOrder(requestId, receiverName, phone, address, note, review.items());
+                    var submission = new PendingOrder(request, Map.copyOf(purchased));
+                    PENDING_ORDERS.put(user.getId(), submission);
+                    submit(user.getId(), submission, status, submitting, orderButton, checkOrders);
+                } catch (IllegalArgumentException failure) {
                     status.error(failure.getMessage(), null);
-                    checkOrders.setVisible(failure instanceof OrderService.UnconfirmedOrderException);
                     submitting.set(false);
-                });
-                submit.setOnSucceeded(done -> {
-                    status.success("Đặt hàng thành công.");
-                    if (sameCustomer(user.getId())) cartService.clear();
-                    var result = submit.getValue();
-                    Alert success = new Alert(Alert.AlertType.INFORMATION);
-                    success.setHeaderText("Đã tạo đơn #" + result.getId());
-                    success.setContentText("Tổng tiền: " + currency.format(result.getTotalAmount()));
-                    success.initOwner(PageNavigation.window());
-                    success.showAndWait();
+                } catch (BackingStoreException | SecurityException failure) {
+                    status.error("Không lưu được mã yêu cầu trên máy. Đơn hàng chưa được gửi.", null);
                     submitting.set(false);
-                    PageNavigation.back(orderButton.getScene());
-                });
-                startTask(submit);
+                }
             });
             startTask(reviewTask);
         });
@@ -320,7 +336,103 @@ public class CheckoutWindow {
 
         PageNavigation.show("Đặt hàng", scene);
         PageNavigation.guardBack(scene, () -> !submitting.get());
+        if (pending == null && remembered != null) {
+            recover(user.getId(), remembered, status, submitting, orderButton);
+        }
     }
+    private void submit(long userId, PendingOrder pending, OperationStatus status,
+                        SimpleBooleanProperty submitting, Button orderButton, Button checkOrders) {
+        boolean retry = checkOrders.isVisible();
+        submitting.set(true);
+        status.loading("Đang gửi yêu cầu đặt hàng… Vui lòng chờ xác nhận.");
+        Task<OrderService.OrderResult> task = new Task<>() {
+            @Override
+            protected OrderService.OrderResult call() throws Exception {
+                if (!sameCustomer(userId)) throw new IllegalStateException("Tài khoản đã thay đổi.");
+                return orderService.submitOrder(pending.request());
+            }
+        };
+        task.setOnFailed(event -> {
+            Throwable failure = task.getException();
+            if (failure instanceof OrderService.UnconfirmedOrderException
+                    || (retry && !(failure instanceof OrderService.RejectedOrderException))) {
+                showPending(status, orderButton, checkOrders);
+            } else {
+                PENDING_ORDERS.remove(userId, pending);
+                orderButton.setText("Xác nhận đặt hàng");
+                checkOrders.setVisible(false);
+            }
+            status.error(failure.getMessage(), failure instanceof OrderService.CheckoutConflict
+                    ? () -> recover(userId, pending.request().requestId(), status, submitting, orderButton) : null);
+            submitting.set(false);
+        });
+        task.setOnSucceeded(event -> {
+            PENDING_ORDERS.remove(userId, pending);
+            var order = task.getValue();
+            if (sameCustomer(userId) && !"CANCELLED".equals(order.getStatus())) {
+                cartService.confirmPurchase(pending.purchased());
+            }
+            confirm(userId, pending.request().requestId(), order, status, submitting, orderButton);
+        });
+        startTask(task);
+    }
+
+    private void showPending(OperationStatus status, Button orderButton, Button checkOrders) {
+        status.info("Gửi lại sẽ dùng nguyên thông tin và mã của yêu cầu đang chờ xác nhận.");
+        orderButton.setText("Gửi lại yêu cầu cũ");
+        checkOrders.setVisible(true);
+    }
+
+    private void recover(long userId, String requestId, OperationStatus status,
+                         SimpleBooleanProperty submitting, Button orderButton) {
+        submitting.set(true);
+        status.loading("Đang kiểm tra yêu cầu đặt hàng trước đó…");
+        Task<OrderService.OrderResult> lookup = new Task<>() {
+            @Override
+            protected OrderService.OrderResult call() throws Exception {
+                return orderService.findOrderForRequest(requestId);
+            }
+        };
+        lookup.setOnSucceeded(event -> {
+            var order = lookup.getValue();
+            if (order == null) {
+                status.info("Chưa tìm thấy đơn đã lưu. Lần đặt tiếp theo sẽ sử dụng cùng mã yêu cầu.");
+                submitting.set(false);
+            } else {
+                PENDING_ORDERS.remove(userId);
+                confirm(userId, requestId, order, status, submitting, orderButton);
+            }
+        });
+        lookup.setOnFailed(event -> {
+            status.error("Chưa kiểm tra được yêu cầu trước. " + lookup.getException().getMessage(),
+                    () -> recover(userId, requestId, status, submitting, orderButton));
+            submitting.set(false);
+        });
+        startTask(lookup);
+    }
+
+    private void confirm(long userId, String requestId, OrderService.OrderResult order,
+                         OperationStatus status, SimpleBooleanProperty submitting, Button orderButton) {
+        if (PageNavigation.isCurrent(orderButton.getScene()) && sameCustomer(userId)) {
+            boolean cancelled = "CANCELLED".equals(order.getStatus());
+            status.success("Đã tìm thấy đơn #" + order.getId() + ".");
+            Alert success = new Alert(Alert.AlertType.INFORMATION);
+            success.setHeaderText((cancelled ? "Đơn đã hủy #" : "Đã xác nhận đơn #") + order.getId());
+            success.setContentText(cancelled ? "Giỏ hàng vẫn được giữ."
+                    : "Tổng tiền: " + currency.format(order.getTotalAmount()));
+            success.initOwner(PageNavigation.window());
+            if (success.showAndWait().orElse(null) == ButtonType.OK) {
+                try {
+                    CheckoutKeyStore.clear(userId, requestId);
+                } catch (BackingStoreException | SecurityException error) {
+                    // A stored key can safely recover the same order again.
+                }
+            }
+        }
+        submitting.set(false);
+        PageNavigation.back(orderButton.getScene());
+    }
+
     private boolean sameCustomer(long id) {
         return sessionManager.isCustomer() && sessionManager.getCurrentUser().getId() == id;
     }

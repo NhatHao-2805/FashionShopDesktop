@@ -22,7 +22,10 @@ public class OrderRepository {
     }
 
     public Order create(Order order) {
+        return create(order, null, null);
+    }
 
+    public Order create(Order order, String requestId, String fingerprint) {
         Connection connection = null;
 
         try {
@@ -31,6 +34,14 @@ public class OrderRepository {
                     connections.open();
 
             connection.setAutoCommit(false);
+            if (requestId != null) {
+                claimCheckout(connection, order.getUserId(), requestId, fingerprint);
+                Long existing = findCheckout(connection, order.getUserId(), requestId, fingerprint);
+                if (existing != null) {
+                    connection.commit();
+                    return findByIdAndUserId(existing, order.getUserId());
+                }
+            }
             List<OrderItem> items = order.getItems().stream()
                     .sorted(Comparator.comparingLong(OrderItem::getProductId)).toList();
             Map<OrderItem, Long> variantIds = new HashMap<>();
@@ -352,6 +363,16 @@ public class OrderRepository {
                 }
             }
 
+            if (requestId != null) {
+                try (PreparedStatement update = connection.prepareStatement("""
+                        UPDATE order_requests SET order_id = ? WHERE user_id = ? AND request_id = ?
+                        """)) {
+                    update.setLong(1, orderId);
+                    update.setLong(2, order.getUserId());
+                    update.setString(3, requestId);
+                    update.executeUpdate();
+                }
+            }
             connection.commit();
 
             order.setId(orderId);
@@ -367,6 +388,7 @@ public class OrderRepository {
 
                 throw (IllegalArgumentException) e;
             }
+            if (e instanceof CheckoutConflict conflict) throw conflict;
 
             throw new IllegalStateException(
                     "Không thể tạo đơn hàng.",
@@ -376,6 +398,58 @@ public class OrderRepository {
         } finally {
 
             closeQuietly(connection);
+        }
+    }
+
+    private void claimCheckout(Connection connection, long userId, String requestId, String fingerprint) throws SQLException {
+        // The unique row serializes only submissions with the same request key.
+        try (PreparedStatement claim = connection.prepareStatement("""
+                INSERT INTO order_requests (user_id, request_id, fingerprint) VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE request_id = request_id
+                """)) {
+            claim.setLong(1, userId);
+            claim.setString(2, requestId);
+            claim.setString(3, fingerprint);
+            claim.executeUpdate();
+        }
+    }
+
+    private Long findCheckout(Connection connection, long userId, String requestId, String fingerprint) throws SQLException {
+        try (PreparedStatement query = connection.prepareStatement("""
+                SELECT fingerprint, order_id FROM order_requests
+                WHERE user_id = ? AND request_id = ?
+                FOR UPDATE
+                """)) {
+            query.setLong(1, userId);
+            query.setString(2, requestId);
+            try (ResultSet rows = query.executeQuery()) {
+                if (!rows.next()) return null;
+                if (!fingerprint.equals(rows.getString("fingerprint"))) throw new CheckoutConflict();
+                return rows.getObject("order_id", Long.class);
+            }
+        }
+    }
+
+    public Order findByRequestId(long userId, String requestId) {
+        Long orderId;
+        try (Connection connection = connections.open();
+             PreparedStatement query = connection.prepareStatement("""
+                     SELECT order_id FROM order_requests WHERE user_id = ? AND request_id = ?
+                     """)) {
+            query.setLong(1, userId);
+            query.setString(2, requestId);
+            try (ResultSet rows = query.executeQuery()) {
+                orderId = rows.next() ? rows.getObject("order_id", Long.class) : null;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Không thể kiểm tra yêu cầu đặt hàng.", e);
+        }
+        return orderId == null ? null : findByIdAndUserId(orderId, userId);
+    }
+
+    public static final class CheckoutConflict extends RuntimeException {
+        public CheckoutConflict() {
+            super("Mã yêu cầu đã được dùng cho một nội dung khác. Vui lòng kiểm tra đơn hàng.");
         }
     }
 

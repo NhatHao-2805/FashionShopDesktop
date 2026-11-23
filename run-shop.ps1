@@ -2,7 +2,8 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Both', 'Customer', 'Admin', 'None')]
-    [string]$Client = 'Both',
+    # Một cửa sổ duy nhất: đăng nhập chung, sau đó tự chuyển theo vai trò.
+    [string]$Client = 'Customer',
     [ValidateRange(0, 65535)]
     [int]$Port = 0,
     [string]$XamppRoot,
@@ -137,7 +138,7 @@ foreach ($candidate in $candidates) {
     }
     if ($DatabaseAction -eq 'Check' -and $schema -ceq 'fashion_shop' -and !$DatabaseName) {
         $running = Get-FashionServer $candidate
-        if ($running -and $running.variant_stock) {
+        if ($running -and $running.variant_stock -and $running.checkout_idempotency) {
             $existing = $running
             break
         }
@@ -187,6 +188,7 @@ if ($schema) {
             if ([int]$sizeColor -eq 1) { throw 'The earlier size/color migration is incomplete. Repair it before migrating.' }
             $variant = Invoke-DatabaseQuery "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='$schema' AND TABLE_NAME='order_items' AND COLUMN_NAME='variant_id'"
             if ([int]$variant -eq 0) { Invoke-DatabaseScript 'database/migrate_variant_stock.sql' }
+            Invoke-DatabaseScript 'database/migrate_order_requests.sql'
         }
     }
 } elseif ($DatabaseAction -ne 'Check') {
@@ -214,13 +216,18 @@ try {
             '-Dexec.mainClass=com.fashionshop.server.ServerApplication')
     }
     $ready = $false
+    $missingCheckoutSchema = $false
     for ($attempt = 0; $attempt -lt 90; $attempt++) {
         if ($backend -and $backend.Process.HasExited) { break }
         try {
             $health = Invoke-RestMethod "$url/api/health/db" -TimeoutSec 2
             $products = Invoke-RestMethod "$url/api/products" -TimeoutSec 2
             $active = Get-FashionServer $Port
-            if ($health.success -and $products.success -and $active.variant_stock) {
+            if ($health.success -and $active.checkout_idempotency -and -not $health.data.checkout_idempotency) {
+                $missingCheckoutSchema = $true
+                break
+            }
+            if ($health.success -and $products.success -and $active.variant_stock -and $health.data.checkout_idempotency) {
                 $ready = $true
                 break
             }
@@ -234,6 +241,9 @@ try {
             & taskkill.exe /PID $backend.Process.Id /T /F | Out-Null
         }
         $detail = if ($backend) { "See $($backend.Log) and $($backend.ErrorLog)." } else { "Check the server at $url." }
+        if ($missingCheckoutSchema) {
+            throw "Missing checkout schema. Run -DatabaseAction Migrate or apply database/migrate_order_requests.sql. $detail"
+        }
         throw "Server not ready. $detail For an existing schema, check the variant migration in README.md."
     }
     Write-Host "Fashion Shop is ready at $url."

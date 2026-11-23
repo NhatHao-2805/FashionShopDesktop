@@ -37,12 +37,64 @@ class OrderRepositoryIntegrationTest {
     }
     @BeforeEach void fixtures() throws Exception {
         try(Connection c=testConnection(); Statement s=c.createStatement()) {
+            s.executeUpdate("DELETE FROM order_requests");
             s.executeUpdate("DELETE FROM inventory_transactions"); s.executeUpdate("DELETE FROM order_items");
             s.executeUpdate("DELETE FROM orders"); s.executeUpdate("DELETE FROM product_variants");
             s.executeUpdate("DELETE FROM products"); s.executeUpdate("DELETE FROM users");
             s.executeUpdate("INSERT INTO users(id,name,email,password_hash,role,status) VALUES(1,'A','a@example.test','not-a-real-password','CUSTOMER','ACTIVE'),(2,'B','b@example.test','not-a-real-password','CUSTOMER','ACTIVE')");
             s.executeUpdate("INSERT INTO products(id,name,price,size,color,stock,status) VALUES(1,'Test shirt',100,'M,L','Black',1,'ACTIVE')");
         }
+    }
+    @Test void concurrentRetriesCommitOneOrderAndReserveStockOnce() throws Exception {
+        trackVariants(1, 0);
+        String key = UUID.randomUUID().toString();
+        String digest = "a".repeat(64);
+        var start = new CountDownLatch(1);
+        try (var workers = Executors.newFixedThreadPool(2)) {
+            Callable<Order> submit = () -> {
+                start.await();
+                return repository.create(order("M", new BigDecimal("100")), key, digest);
+            };
+            var first = workers.submit(submit);
+            var second = workers.submit(submit);
+            start.countDown();
+            assertEquals(first.get(15, TimeUnit.SECONDS).getId(), second.get(15, TimeUnit.SECONDS).getId());
+        }
+        assertEquals(1, number("SELECT COUNT(*) FROM orders"));
+        assertEquals(1, number("SELECT COUNT(*) FROM order_requests"));
+        assertEquals(1, number("SELECT COUNT(*) FROM inventory_transactions"));
+        assertEquals(0, number("SELECT stock FROM product_variants WHERE size_value='M'"));
+    }
+
+    @Test void replayAfterCancellationReturnsSameOrderAndRejectsDifferentPayload() throws Exception {
+        trackVariants(1, 0);
+        String key = UUID.randomUUID().toString();
+        String digest = "a".repeat(64);
+        Order created = repository.create(order("M", new BigDecimal("100")), key, digest);
+        assertEquals(created.getId(), repository.findByRequestId(1, key).getId());
+        assertNull(repository.findByRequestId(2, key));
+        repository.cancel(created.getId(), 1);
+        Order replay = repository.create(order("M", new BigDecimal("100")), key, digest);
+        assertEquals(created.getId(), replay.getId());
+        assertEquals("CANCELLED", replay.getStatus());
+        assertThrows(OrderRepository.CheckoutConflict.class,
+                () -> repository.create(order("M", new BigDecimal("100")), key, "b".repeat(64)));
+        assertEquals(1, number("SELECT COUNT(*) FROM orders"));
+        assertEquals(1, number("SELECT stock FROM product_variants WHERE size_value='M'"));
+    }
+
+    @Test void failedCheckoutDoesNotConsumeKeyAndKeyIsScopedToCustomer() throws Exception {
+        String key = UUID.randomUUID().toString();
+        String digest = "a".repeat(64);
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.create(order("M", new BigDecimal("99")), key, digest));
+        assertEquals(0, number("SELECT COUNT(*) FROM order_requests"));
+        Order created = repository.create(order("M", new BigDecimal("100")), key, digest);
+        repository.cancel(created.getId(), 1);
+        Order other = order("M", new BigDecimal("100"));
+        other.setUserId(2);
+        assertNotEquals(created.getId(), repository.create(other, key, digest).getId());
+        assertEquals(2, number("SELECT COUNT(*) FROM order_requests"));
     }
     Order order(String size, BigDecimal price) {
         Order o=new Order(); o.setUserId(1); o.setReceiverName("Test customer"); o.setPhone("0912345678");

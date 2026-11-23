@@ -105,6 +105,29 @@
 .sold-out { -fx-font-size: 11px; -fx-text-fill: #9a3b34; }
 .empty-state { -fx-padding: 36; }
 
+.detail-header {
+    -fx-background-color: #c7d7e3;
+    -fx-border-color: #adbfce;
+    -fx-border-width: 0 0 1 0;
+}
+.detail-header .button {
+    -fx-background-color: #b8cbd9;
+    -fx-text-fill: #233d50;
+}
+.detail-header .button:hover { -fx-background-color: #a6bdce; }
+.page-title { -fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1d2e3b; }
+.product-detail-card {
+    -fx-background-color: #edf3f7;
+    -fx-border-color: #adbfce;
+    -fx-border-width: 1;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-effect: dropshadow(gaussian, #294b6122, 18, 0.15, 0, 4);
+}
+.product-detail-info { -fx-background-color: #e4edf4; -fx-background-radius: 5; }
+.product-detail-info .label { -fx-font-size: 14px; }
+.product-detail-info .button { -fx-padding: 9 14; }
+
 .operation-status {
     -fx-background-color: #e8f0f6;
     -fx-border-color: #aec2d2;

@@ -5,8 +5,15 @@ import com.fashionshop.server.model.OrderItem;
 import com.fashionshop.server.security.JwtAuthentication;
 import com.fashionshop.server.service.OrderService;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import spark.Route;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
+import com.fashionshop.server.repository.OrderRepository.CheckoutConflict;
 
 import static spark.Spark.get;
 import static spark.Spark.post;
@@ -164,9 +171,7 @@ public class OrderController {
         // POST /api/protected/orders
         // =====================================================
 
-        post(
-                "/api/protected/orders",
-                (request, response) -> {
+        Route checkout = (request, response) -> {
 
                     response.type(
                             "application/json; charset=UTF-8"
@@ -181,9 +186,17 @@ public class OrderController {
                                         )
                                 );
 
+                        String payload = request.body();
+                        String requestId = null;
+                        String fingerprint = null;
+                        if (request.pathInfo().endsWith("/idempotent")) {
+                            requestId = checkoutKey(request.headers("Idempotency-Key"));
+                            fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                                    .digest(payload.getBytes(StandardCharsets.UTF_8)));
+                        }
                         CreateOrderRequest body =
                                 gson.fromJson(
-                                        request.body(),
+                                        payload,
                                         CreateOrderRequest.class
                                 );
 
@@ -204,7 +217,9 @@ public class OrderController {
                                         body.address,
                                         body.note,
                                         body.paymentMethod,
-                                        body.items
+                                        body.items,
+                                        requestId,
+                                        fingerprint
                                 );
 
                         response.status(201);
@@ -214,6 +229,12 @@ public class OrderController {
                                 order
                         );
 
+                    } catch (CheckoutConflict e) {
+                        response.status(409);
+                        return error(e.getMessage());
+                    } catch (JsonSyntaxException e) {
+                        response.status(400);
+                        return error("Nội dung đặt hàng không hợp lệ.");
                     } catch (IllegalArgumentException e) {
 
                         response.status(400);
@@ -240,9 +261,27 @@ public class OrderController {
                                 "Không thể tạo đơn hàng."
                         );
                     }
-                }
-        );
+                };
+        post("/api/protected/orders", checkout);
+        post("/api/protected/orders/idempotent", checkout);
 
+        get("/api/protected/order-requests/:key", (request, response) -> {
+            response.type("application/json; charset=UTF-8");
+            try {
+                JwtAuthentication auth = requireCustomer(request.attribute("authentication"));
+                Order order = orderService.getOrderByRequestId(auth.getUserId(), checkoutKey(request.params(":key")));
+                return success(order == null ? "Chưa có đơn cho yêu cầu này." : "Đã tìm thấy đơn.", order);
+            } catch (IllegalArgumentException e) {
+                response.status(400);
+                return error(e.getMessage());
+            } catch (SecurityException e) {
+                response.status(403);
+                return error(e.getMessage());
+            } catch (IllegalStateException e) {
+                response.status(503);
+                return error(e.getMessage());
+            }
+        });
 
         // =====================================================
         // PUT /api/protected/orders/:id/cancel
@@ -385,6 +424,13 @@ public class OrderController {
         response.data = null;
 
         return gson.toJson(response);
+    }
+
+    private static String checkoutKey(String key) {
+        if (key == null || !key.matches("[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}")) {
+            throw new IllegalArgumentException("Mã yêu cầu đặt hàng không hợp lệ.");
+        }
+        return UUID.fromString(key).toString();
     }
 
     private static class CreateOrderRequest {

@@ -336,6 +336,7 @@ orderController.registerRoutes();
                         "service": "fashion-shop-server",
                         "status": "UP",
                         "variant_stock": true,
+                        "checkout_idempotency": true,
                         "http_port": %d
                       }
                     }
@@ -367,6 +368,14 @@ orderController.registerRoutes();
 
 
             if (databaseConnected) {
+                boolean checkoutSchemaReady;
+                try (var connection = com.fashionshop.server.database.DatabaseConnection.getConnection();
+                     var statement = connection.createStatement();
+                     var rows = statement.executeQuery("SELECT 1 FROM order_requests LIMIT 1")) {
+                    checkoutSchemaReady = true;
+                } catch (java.sql.SQLException ignored) {
+                    checkoutSchemaReady = false;
+                }
 
                 return """
                         {
@@ -374,10 +383,11 @@ orderController.registerRoutes();
                           "message": "Database connection is working",
                           "data": {
                             "database": "fashion_shop",
-                            "status": "UP"
+                            "status": "UP",
+                            "checkout_idempotency": %s
                           }
                         }
-                        """;
+                        """.formatted(checkoutSchemaReady);
 
             } else {
 
