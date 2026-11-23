@@ -67,6 +67,18 @@ public class AuthController {
                 );
             }
         });
+
+        post("/api/auth/register", (request, response) -> {
+            response.type("application/json");
+            try {
+                RegisterRequest input = gson.fromJson(request.body(), RegisterRequest.class);
+                if (input == null) throw new IllegalArgumentException("Request không hợp lệ.");
+                User user = authService.registerCustomer(input.name, input.email, input.password, input.phone);
+                response.status(201);
+                return successMessage("Đăng ký tài khoản thành công.");
+            } catch (IllegalArgumentException e) { response.status(400); return error(e.getMessage()); }
+            catch (Exception e) { response.status(500); return error("Không thể đăng ký tài khoản."); }
+        });
     }
 
     private String success(AuthService.LoginResult result) {
@@ -105,10 +117,16 @@ public class AuthController {
         return gson.toJson(response);
     }
 
+    private String successMessage(String message) {
+        ApiResponse response = new ApiResponse(); response.success = true; response.message = message; response.data = null;
+        return gson.toJson(response);
+    }
+
     private static class LoginRequest {
         String email;
         String password;
     }
+    private static class RegisterRequest { String name; String email; String password; String phone; }
 
     private static class LoginResponse {
         String token;

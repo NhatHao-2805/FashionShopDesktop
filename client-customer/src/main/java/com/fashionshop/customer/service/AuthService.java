@@ -25,6 +25,12 @@ public class AuthService {
         return login(email, password, true);
     }
 
+    public void register(String name, String email, String password, String phone) throws Exception {
+        RegisterRequest request = new RegisterRequest(); request.name = name; request.email = email; request.password = password; request.phone = phone;
+        ApiResponse response = gson.fromJson(apiClient.post("/api/auth/register", gson.toJson(request)), ApiResponse.class);
+        if (response == null || !response.success) throw new IllegalArgumentException(response == null ? "Server không trả dữ liệu." : response.message);
+    }
+
     private User login(String email, String password, boolean adminOnly) throws Exception {
         LoginRequest request =
                 new LoginRequest();
@@ -94,6 +100,7 @@ public class AuthService {
         String email;
         String password;
     }
+    private static class RegisterRequest { String name; String email; String password; String phone; }
 
     private static class ApiResponse {
         boolean success;

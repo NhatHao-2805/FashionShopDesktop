@@ -93,6 +93,9 @@ private final Button cartButton =
     private final ComboBox<String> sortBox = new ComboBox<>();
     private static final String ALL_COLORS = "Tất cả màu";
     private final ComboBox<String> colorBox = new ComboBox<>();
+    private final ComboBox<String> sizeBox = new ComboBox<>();
+    private final TextField minPriceField = new TextField();
+    private final TextField maxPriceField = new TextField();
     private boolean catalogLoaded;
     private boolean catalogLoading;
 
@@ -167,6 +170,15 @@ private final Button cartButton =
         colorBox.setValue(ALL_COLORS);
         colorBox.setPrefWidth(150);
         colorBox.setOnAction(event -> filterProducts());
+        sizeBox.setPromptText("Tất cả size");
+        sizeBox.setPrefWidth(130);
+        sizeBox.setOnAction(event -> filterProducts());
+        minPriceField.setPromptText("Giá từ");
+        maxPriceField.setPromptText("Giá đến");
+        minPriceField.setPrefWidth(105);
+        maxPriceField.setPrefWidth(105);
+        minPriceField.setOnAction(event -> filterProducts());
+        maxPriceField.setOnAction(event -> filterProducts());
         productFlowPane.setHgap(18);
         productFlowPane.setVgap(26);
         productFlowPane.setPadding(new Insets(4, 0, 20, 0));
@@ -213,11 +225,15 @@ private final Button cartButton =
             searchField.clear();
             categoryComboBox.getSelectionModel().clearSelection();
             colorBox.setValue(ALL_COLORS);
+            sizeBox.setValue(null);
+            minPriceField.clear();
+            maxPriceField.clear();
             sortBox.getSelectionModel().selectFirst();
             filterProducts();
         });
-        HBox filters = new HBox(12, label("Danh mục", "muted"), categoryComboBox,
-                label("Màu sắc", "muted"), colorBox,
+        HBox filters = new HBox(10, label("Danh mục", "muted"), categoryComboBox,
+                label("Màu sắc", "muted"), colorBox, label("Size", "muted"), sizeBox,
+                label("Giá", "muted"), minPriceField, new Label("–"), maxPriceField,
                 spacer(), label("Sắp xếp", "muted"), sortBox, clear);
         filters.setAlignment(Pos.CENTER_LEFT);
         filters.getStyleClass().add("filter-bar");
@@ -400,6 +416,11 @@ cartButton.setVisible(true);
                                     colorBox.getItems().setAll(ALL_COLORS);
                                     colorBox.getItems().addAll(colors);
                                     colorBox.setValue(ALL_COLORS);
+                                    var sizes = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+                                    allProducts.stream().flatMap(CustomerApplication::productSizes)
+                                            .forEach(sizes::add);
+                                    sizeBox.getItems().setAll(sizes);
+                                    sizeBox.getSelectionModel().clearSelection();
 
                                     catalogLoading = false;
                                     catalogLoaded = true;
@@ -445,6 +466,12 @@ cartButton.setVisible(true);
                 .filter(color -> !color.isEmpty());
     }
 
+    private static Stream<String> productSizes(Product product) {
+        String sizes = product.getSize();
+        return sizes == null ? Stream.empty() : Arrays.stream(sizes.split(","))
+                .map(String::trim).filter(value -> !value.isEmpty());
+    }
+
     private void filterProducts() {
         if (!catalogLoaded) return;
 
@@ -460,6 +487,10 @@ cartButton.setVisible(true);
         Category selectedCategory =
                 categoryComboBox.getValue();
         String selectedColor = colorBox.getValue();
+        String selectedSize = sizeBox.getValue();
+        double minPrice = parsePrice(minPriceField.getText(), 0);
+        double maxPrice = parsePrice(maxPriceField.getText(), Double.MAX_VALUE);
+        final double upperPrice = Math.max(minPrice, maxPrice);
 
         List<Product> filteredProducts =
                 allProducts.stream()
@@ -510,7 +541,11 @@ cartButton.setVisible(true);
                                             && categoryMatch
                                             && (selectedColor == null || ALL_COLORS.equals(selectedColor)
                                                     || productColors(product)
-                                                    .anyMatch(selectedColor::equalsIgnoreCase));
+                                                    .anyMatch(selectedColor::equalsIgnoreCase))
+                                            && (selectedSize == null
+                                                    || productSizes(product).anyMatch(selectedSize::equalsIgnoreCase))
+                                            && product.getPrice() >= minPrice
+                                            && product.getPrice() <= upperPrice;
                                 }
                         )
                         .toList();
@@ -521,6 +556,15 @@ cartButton.setVisible(true);
         else if ("Giá: cao đến thấp".equals(sort)) sorted.sort(Comparator.comparingDouble(Product::getPrice).reversed());
         else if ("Tên: A → Z".equals(sort)) sorted.sort(Comparator.comparing(p -> p.getName() == null ? "" : p.getName(), String.CASE_INSENSITIVE_ORDER));
         displayProducts(sorted);
+    }
+
+    private static double parsePrice(String value, double fallback) {
+        if (value == null || value.isBlank()) return fallback;
+        try {
+            return Double.parseDouble(value.replace(".", "").replace(",", ".").trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     private void displayProducts(

@@ -64,6 +64,17 @@ public class AuthService {
         );
     }
 
+    public User registerCustomer(String name, String email, String password, String phone) {
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("Họ tên không được để trống.");
+        if (email == null || !email.trim().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"))
+            throw new IllegalArgumentException("Email không hợp lệ.");
+        if (password == null || password.length() < 6)
+            throw new IllegalArgumentException("Mật khẩu phải có ít nhất 6 ký tự.");
+        String normalized = email.trim().toLowerCase();
+        if (userRepository.existsByEmail(normalized)) throw new IllegalArgumentException("Email đã được sử dụng.");
+        return userRepository.createCustomer(name.trim(), normalized, BCrypt.hashpw(password, BCrypt.gensalt(12)), phone);
+    }
+
     public static class LoginResult {
 
         private final String token;

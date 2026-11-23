@@ -99,6 +99,34 @@ public class LoginWindow {
 
         loginButton.getStyleClass().add("primary-button");
 
+        Button registerButton = new Button("Tạo tài khoản khách hàng");
+        registerButton.setMaxWidth(Double.MAX_VALUE);
+        registerButton.setVisible(!adminOnly);
+        registerButton.setManaged(!adminOnly);
+        registerButton.setOnAction(event -> {
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setTitle("Đăng ký tài khoản");
+            TextField name = new TextField(); name.setPromptText("Họ tên");
+            TextField phone = new TextField(); phone.setPromptText("Số điện thoại (không bắt buộc)");
+            PasswordField confirm = new PasswordField(); confirm.setPromptText("Nhập lại mật khẩu");
+            VBox form = new VBox(9, new Label("Họ tên"), name, new Label("Số điện thoại"), phone,
+                    new Label("Email"), new TextField(emailField.getText()), new Label("Mật khẩu"), new PasswordField());
+            TextField emailRegister = (TextField) form.getChildren().get(5);
+            PasswordField password = (PasswordField) form.getChildren().get(7);
+            form.getChildren().addAll(new Label("Xác nhận mật khẩu"), confirm);
+            dialog.getDialogPane().setContent(form); dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+            dialog.setResultConverter(button -> {
+                if (button != ButtonType.OK) return button;
+                try {
+                    if (!password.getText().equals(confirm.getText())) throw new IllegalArgumentException("Mật khẩu xác nhận không khớp.");
+                    authService.register(name.getText(), emailRegister.getText(), password.getText(), phone.getText());
+                    messageLabel.setStyle("-fx-text-fill: #16a34a;"); messageLabel.setText("Đăng ký thành công, hãy đăng nhập.");
+                } catch (Exception error) { messageLabel.setStyle("-fx-text-fill: #dc2626;"); messageLabel.setText(error.getMessage()); }
+                return button;
+            });
+            dialog.showAndWait();
+        });
+
         Runnable loginAction =
                 () -> {
 
@@ -237,7 +265,7 @@ public class LoginWindow {
         passwordLabel.setLabelFor(passwordField);
         VBox email = new VBox(5, emailLabel, emailField);
         VBox password = new VBox(5, passwordLabel, passwordField);
-        VBox root = new VBox(14, brand, titleLabel, email, password, loginButton, progress, messageLabel);
+        VBox root = new VBox(14, brand, titleLabel, email, password, loginButton, registerButton, progress, messageLabel);
         root.setAlignment(Pos.CENTER_LEFT);
         root.setPadding(new Insets(28, 38, 28, 38));
         messageLabel.managedProperty().bind(messageLabel.textProperty().isNotEmpty());

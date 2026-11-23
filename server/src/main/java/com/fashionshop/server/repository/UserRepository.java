@@ -10,6 +10,28 @@ import java.sql.SQLException;
 
 public class UserRepository {
 
+    public User createCustomer(String name, String email, String passwordHash, String phone) {
+        String sql = "INSERT INTO users (name, email, password_hash, phone, role, status) VALUES (?, ?, ?, ?, 'CUSTOMER', 'ACTIVE')";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, name);
+            statement.setString(2, email);
+            statement.setString(3, passwordHash);
+            statement.setString(4, phone == null || phone.isBlank() ? null : phone);
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (!keys.next()) throw new IllegalStateException("Không tạo được tài khoản.");
+                User user = new User();
+                user.setId(keys.getLong(1)); user.setName(name); user.setEmail(email);
+                user.setPhone(phone); user.setRole("CUSTOMER"); user.setStatus("ACTIVE");
+                return user;
+            }
+        } catch (SQLException e) {
+            if (e.getErrorCode() == 1062) throw new IllegalArgumentException("Email đã được sử dụng.");
+            throw new IllegalStateException("Không thể tạo tài khoản.", e);
+        }
+    }
+
     public User findByEmail(String email) {
         String sql = """
                 SELECT
