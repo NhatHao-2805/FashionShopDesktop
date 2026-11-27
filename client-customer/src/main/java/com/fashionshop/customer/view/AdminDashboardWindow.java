@@ -8,12 +8,15 @@ import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.Locale;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class AdminDashboardWindow {
 
@@ -24,6 +27,11 @@ public class AdminDashboardWindow {
 
     private final GridPane statsGrid =
             new GridPane();
+
+    private final PieChart ordersChart = new PieChart();
+    private final Label chartSummary = new Label("Chưa có dữ liệu đơn hàng.");
+    private final Button refreshButton = new Button("Làm mới");
+    private boolean loading;
 
     private final Label statusLabel =
             new Label();
@@ -273,10 +281,7 @@ public class AdminDashboardWindow {
                 "-fx-font-weight: bold;"
         );
 
-        Button refresh =
-                new Button(
-                        "Làm mới"
-                );
+        Button refresh = refreshButton;
 
         refresh.setStyle(
                 "-fx-background-color: #294b61;"
@@ -312,7 +317,7 @@ public class AdminDashboardWindow {
         return bar;
     }
 
-    private VBox createDashboardContent() {
+    private ScrollPane createDashboardContent() {
 
         statsGrid.setHgap(
                 16
@@ -346,10 +351,19 @@ public class AdminDashboardWindow {
                 Pos.CENTER_LEFT
         );
 
+        ordersChart.setTitle("Trạng thái đơn hàng");
+        ordersChart.setAnimated(false);
+        ordersChart.setLabelsVisible(true);
+        ordersChart.setPrefHeight(340);
+        ordersChart.setMaxWidth(Double.MAX_VALUE);
+        chartSummary.setWrapText(true);
+
         VBox content =
                 new VBox(
                         10,
                         statsGrid,
+                        ordersChart,
+                        chartSummary,
                         statusBox
                 );
 
@@ -357,10 +371,16 @@ public class AdminDashboardWindow {
                 new Insets(25)
         );
 
-        return content;
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        return scroll;
     }
 
     private void loadDashboard() {
+
+        if (loading) return;
+        loading = true;
+        refreshButton.setDisable(true);
 
         progress.setVisible(
                 true
@@ -389,6 +409,9 @@ public class AdminDashboardWindow {
         task.setOnSucceeded(
                 event -> {
 
+                    loading = false;
+                    refreshButton.setDisable(false);
+
                     progress.setVisible(
                             false
                     );
@@ -402,13 +425,17 @@ public class AdminDashboardWindow {
                     );
 
                     statusLabel.setText(
-                            "Dữ liệu đã được cập nhật."
+                            "Cập nhật lúc " + LocalDateTime.now().format(
+                                    DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"))
                     );
                 }
         );
 
         task.setOnFailed(
                 event -> {
+
+                    loading = false;
+                    refreshButton.setDisable(false);
 
                     progress.setVisible(
                             false
@@ -554,6 +581,26 @@ public class AdminDashboardWindow {
                 ),
                 "Chỉ tính đơn đã giao"
         );
+
+        ordersChart.getData().clear();
+        addOrderSlice("Chờ duyệt", stats.getPendingOrders());
+        addOrderSlice("Đang xử lý", stats.getProcessingOrders());
+        addOrderSlice("Đang giao", stats.getShippingOrders());
+        addOrderSlice("Đã giao", stats.getDeliveredOrders());
+        addOrderSlice("Đã hủy", stats.getCancelledOrders());
+        boolean hasOrders = !ordersChart.getData().isEmpty();
+        ordersChart.setVisible(hasOrders);
+        ordersChart.setManaged(hasOrders);
+        chartSummary.setText(hasOrders
+                ? "Số lượng đơn theo trạng thái hiện tại. Doanh thu chỉ tính đơn đã giao."
+                : "Chưa có đơn hàng. Biểu đồ sẽ xuất hiện khi cửa hàng có đơn đầu tiên.");
+    }
+
+    private void addOrderSlice(String status, long count) {
+        if (count > 0) {
+            PieChart.Data slice = new PieChart.Data(status + " (" + count + ")", count);
+            ordersChart.getData().add(slice);
+        }
     }
 
     private void addCard(

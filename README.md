@@ -153,6 +153,8 @@ Dừng client bằng cách đóng cửa sổ; dừng server bằng `Ctrl+C` tron
 
 ## Cách sử dụng
 
+Màn hình **Tổng quan** của quản trị viên có biểu đồ số đơn theo trạng thái, ẩn biểu đồ khi chưa có đơn. Có thể cuộn để xem đầy đủ thống kê trên màn hình nhỏ. Nút **Làm mới** hiển thị thời điểm cập nhật thành công và tạm khóa trong khi tải để tránh gửi yêu cầu trùng.
+
 1. Mở ứng dụng, xem danh sách sản phẩm, tìm kiếm hoặc chọn danh mục.
 2. Nhấn **Đăng nhập**, nhập tài khoản đã có trong database.
 3. Với tài khoản khách hàng: chọn sản phẩm, thêm vào giỏ, kiểm tra số lượng và đặt hàng; xem lịch sử ở **Đơn hàng**, trao đổi qua **Chat**.
